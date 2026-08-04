@@ -1,8 +1,8 @@
 /** Edit these once — they feed the header, footer, page titles and RSS feed. */
 export const site = {
-  title: "Samip Lamsal",
+  title: "Purna Shrestha",
   description: "Writing, notes and photographs.",
-  author: "Samip Lamsal",
+  author: "Purna Shrestha",
   // Set this to your real domain before deploying; used for absolute URLs in RSS.
   url: "https://example.com",
   nav: [
