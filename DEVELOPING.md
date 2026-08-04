@@ -92,27 +92,156 @@ will be deployed.
 
 ---
 
-## 2. The everyday writing loop
+## 2. Every page in the site
 
-1. `pnpm write`
-2. Go to http://localhost:5050/admin
-3. **New post** → write it. `⌘S` (or the Save button) writes
-   `content/posts/<slug>.md` to disk. Save as often as you like; it's just a file.
-4. Drag images into the editor. They land in `public/images/` and the markdown
-   is inserted where your cursor was.
-5. Untick **Draft** when it's ready to be public.
-6. Back at `/admin`, type a short note in the Publish box and hit
-   **Commit & push**.
-7. Cloudflare sees the push, runs `pnpm build`, and the post is live in about
-   a minute.
+Three groups. The first ships to readers; the other two exist only while
+`pnpm write` is running and are physically absent from the deployed site (§4).
 
-Nothing is published until step 6. Everything before that is local files.
+### Public pages — these get deployed
 
-### Drafts
+| Route | What it is | Source file |
+| --- | --- | --- |
+| `/` | Home. Every published post, newest first, with date, reading time and summary. | `src/app/page.tsx` |
+| `/posts/<slug>/` | One post: title, date, optional cover image, the article, its tags. One page is generated per `.md` file. | `src/app/posts/[slug]/page.tsx` |
+| `/tags/` | Index of every tag with a count. | `src/app/tags/page.tsx` |
+| `/tags/<tag>/` | Every post carrying that tag. One page per tag in use. | `src/app/tags/[tag]/page.tsx` |
+| `/about/` | Renders `content/about.md`. Edit that file, not the page. | `src/app/about/page.tsx` |
+| `/rss.xml` | RSS feed of published posts, full article text included, for feed readers. | `src/app/rss.xml/route.ts` |
+| `/sitemap.xml` | Every URL on the site, for search engines. | `src/app/sitemap.ts` |
+| *404* | Shown for any address that doesn't exist. | `src/app/not-found.tsx` |
 
-`draft: true` posts show up on your local site (so you can preview them
-properly) and are stripped from the built site — they're not in the HTML, not in
-the RSS feed, not in the sitemap. The switch is in `src/lib/posts.ts`:
+Drafts appear in none of these once built — not the home page, not RSS, not the
+sitemap.
+
+### Writing-desk pages — local only, never deployed
+
+| Route | What it's for |
+| --- | --- |
+| `/admin/` | The hub. Lists every post (drafts included) with a link to edit each one, a **New post** button, and the **Publish** panel showing your git branch, whether a remote is configured, and how many changes are waiting. |
+| `/admin/edit/new/` | Blank editor. Creating a post. |
+| `/admin/edit/<slug>/` | The same editor loaded with an existing post, plus a **Delete** button. |
+
+### API endpoints — local only, never deployed
+
+You never call these by hand; the editor does. Listed so you know what exists.
+
+| Endpoint | Does |
+| --- | --- |
+| `POST /api/posts/` | Validates the fields and writes `content/posts/<slug>.md`. Handles renames. |
+| `DELETE /api/posts/<slug>/` | Deletes that post's file. |
+| `POST /api/images/` | Saves an uploaded image into `public/images/`, avoiding name collisions. |
+| `POST /api/publish/` | `git add -A`, commit, push. |
+
+---
+
+## 3. From blank page to published — the route-by-route walkthrough
+
+Follow this end to end the first time. Each step says which address you're at.
+
+### Step 1 — start the server (terminal)
+
+```bash
+cd ~/Documents/blogs-static
+pnpm write
+```
+
+Read the port it prints: `Local: http://localhost:5050`. Everywhere below,
+`<port>` means that number. Leave this terminal running the whole time.
+
+### Step 2 — open the hub → `http://localhost:<port>/admin`
+
+You'll see your existing posts and the Publish panel. This is home base; you
+come back here at the end.
+
+### Step 3 — start a post → click **New post** → `/admin/edit/new/`
+
+The blank editor.
+
+### Step 4 — fill in the top box (same page)
+
+- **Title** — as you type it, the **Slug** fills in automatically. The slug is
+  the post's address: `A Walk in Pokhara` → `/posts/a-walk-in-pokhara/`. Change
+  it only if you want a different URL.
+- **Date** — defaults to today. Controls ordering on the home page.
+- **Tags** — comma-separated. Each one becomes a `/tags/<tag>/` page.
+- **Summary** — one line, shown under the title on `/` and in RSS.
+- **Cover image path** — optional, e.g. `/images/lake.jpg`. Shown above the
+  article. Fill it in after you've uploaded the image in step 6.
+- **Draft** (top right) — leave **ticked** while you're working.
+
+### Step 5 — write the body (same page)
+
+Markdown in the large box:
+
+```markdown
+## A section heading
+
+A paragraph. **Bold**, _italic_, and a [link](https://example.com).
+
+- a bullet
+- another
+
+> a quotation
+```
+
+The toolbar buttons (B, i, H2, link, code, quote, list) insert these for you —
+select text first, then click, to wrap what you selected.
+
+### Step 6 — add photos (same page)
+
+**Drag an image file straight into the text box**, or paste it, or click the
+**image** button. It's copied into `public/images/` and the markdown line is
+inserted where your cursor was. Several at once is fine.
+
+### Step 7 — save → `⌘S`, or the **Save** button
+
+The post is now a real file: `content/posts/<slug>.md`. The address bar changes
+to `/admin/edit/<slug>/` and a **Delete** button appears. Save as often as you
+like — nothing is public yet.
+
+### Step 8 — check how it actually looks → `/posts/<slug>/`
+
+Click **preview ↗** from `/admin/`, or type the address. This is the real page,
+exactly as a reader will see it. **Preview** inside the editor is a quicker,
+rougher approximation — trust `/posts/<slug>/`.
+
+Leave the tab open: edit, `⌘S`, refresh.
+
+### Step 9 — make it public → untick **Draft**, then `⌘S`
+
+Until you do this, the post exists only on your machine.
+
+### Step 10 — publish → back to `/admin/` → **Commit & push**
+
+Type a short note in the box (optional) and click the button. It commits your
+posts *and* their images together, then pushes.
+
+- **Remote configured:** Cloudflare rebuilds and the post is live in about a
+  minute, at `https://<your-domain>/posts/<slug>/`.
+- **No remote yet:** it commits locally and tells you so. Nothing is lost, it
+  just isn't online. §7 sets up the remote.
+
+### Editing something you already published
+
+`/admin/` → click its title → `/admin/edit/<slug>/` → change → `⌘S` →
+**Commit & push**. Same loop, no step 3.
+
+One caution: changing the **Slug** of a published post changes its URL, and the
+old address will 404 for anyone who bookmarked or linked it. The editor stops
+auto-updating the slug once a post exists, precisely so this doesn't happen by
+accident.
+
+### Deleting
+
+Open the post in the editor and click **Delete**. It removes the file; publish
+afterwards to remove it from the live site. Images stay in `public/images/` —
+delete those by hand if nothing else uses them.
+
+### Drafts, in one line
+
+`draft: true` posts are visible on your local site so you can preview them
+properly, and are stripped from the built site entirely — not in the HTML, not
+in RSS, not in the sitemap. The switch is in `src/lib/posts.ts`:
 
 ```ts
 const showDrafts = process.env.NODE_ENV === "development";
@@ -120,7 +249,7 @@ const showDrafts = process.env.NODE_ENV === "development";
 
 ---
 
-## 3. How it fits together
+## 4. How it fits together
 
 ### Two completely separate paths
 
@@ -173,12 +302,12 @@ saveImage, status, publish. `local.ts` implements it with the filesystem and
 git. Everything in the admin goes through this interface and never touches
 `fs` directly.
 
-That indirection exists for one reason: to make remote publishing (§7) a new
+That indirection exists for one reason: to make remote publishing (§8) a new
 file rather than a rewrite.
 
 ---
 
-## 4. Where everything lives
+## 5. Where everything lives
 
 ```
 content/
@@ -220,7 +349,7 @@ tsconfig.build.json       production build only (ignores .next/dev)
 
 ---
 
-## 5. Common changes
+## 6. Common changes
 
 ### Site name, description, nav, domain
 
@@ -254,7 +383,7 @@ Say you want `location`:
 ### Adding a static page
 
 Create `src/app/uses/page.tsx` and add `{ href: "/uses/", label: "Uses" }` to
-`site.nav`. Keep the trailing slash — see §8.
+`site.nav`. Keep the trailing slash — see §9.
 
 ### Comments
 
@@ -270,7 +399,7 @@ client-side. Fine up to a few hundred posts.
 
 ---
 
-## 6. Deploying
+## 7. Deploying
 
 ### First deploy
 
@@ -311,7 +440,7 @@ Clones the repo → `pnpm install --frozen-lockfile` → `pnpm build` → serves
 
 ---
 
-## 7. Publishing from anywhere ("Shape B")
+## 8. Publishing from anywhere ("Shape B")
 
 Right now the admin only runs on this machine, so you can only post from here.
 The blocker is that `local.ts` uses `fs`, and a deployed app has no writable,
@@ -329,7 +458,7 @@ persistent filesystem. The fix is to swap *how* files get written:
    ```
 3. Deploy the admin **as its own app** (a Worker or a small Next app on Vercel)
    behind real authentication. Never merge it into this static site — that would
-   throw away the guarantee in §3.
+   throw away the guarantee in §4.
 
 `publish()` becomes a no-op there, since each save is already a commit.
 
@@ -337,7 +466,7 @@ The editor UI, the API validation, and `PostStore` all stay as they are.
 
 ---
 
-## 8. Gotchas worth knowing
+## 9. Gotchas worth knowing
 
 **Trailing slashes.** `trailingSlash: true` in `next.config.ts` means every URL
 ends in `/`. Internal links and `fetch("/api/posts/")` calls must include it, or
@@ -368,7 +497,7 @@ timestamp object and a quoted one into a string. `toIsoDate()` in
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | Cause / fix |
 | --- | --- |
@@ -380,7 +509,7 @@ timestamp object and a quoted one into a string. `toIsoDate()` in
 | Post doesn't appear on the live site | It's still a draft. Untick **Draft**, save, publish. |
 | Post doesn't appear locally either | Filename must be `content/posts/<slug>.md` with valid frontmatter. Check the terminal for a parse error. |
 | Image shows as broken | The markdown path must start `/images/…`, and the file must be in `public/images/`. |
-| **Commit & push** says "no remote configured" | You haven't run `git remote add origin …` yet (§6). Your work is committed locally, nothing is lost. |
+| **Commit & push** says "no remote configured" | You haven't run `git remote add origin …` yet (§7). Your work is committed locally, nothing is lost. |
 | **Commit & push** fails on the push | Usually SSH/credentials. Run `git push` in a terminal to see the real error. |
 | Styles look wrong after editing CSS | Hard reload (`⌘⇧R`). If it persists, restart the dev server. |
 | Editor loads but Save does nothing | Open the browser console. A 400 response carries the reason (missing title, bad date, duplicate slug). |
@@ -388,7 +517,7 @@ timestamp object and a quoted one into a string. `toIsoDate()` in
 
 ---
 
-## 10. Frontmatter reference
+## 11. Frontmatter reference
 
 ```yaml
 ---

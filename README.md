@@ -29,7 +29,36 @@ pnpm write        # same as pnpm dev
 > somewhere else with `PORT=7000 pnpm write`. This is temporary; see
 > [TODO.md](./TODO.md) for how to put it back to 3000.
 
+## The pages
+
+**Public — deployed:**
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Home: every published post, newest first |
+| `/posts/<slug>/` | A single post |
+| `/tags/` | All tags, with counts |
+| `/tags/<tag>/` | Posts carrying one tag |
+| `/about/` | Renders `content/about.md` |
+| `/rss.xml` | Feed for readers |
+| `/sitemap.xml` | For search engines |
+
+**Writing desk — local only, never deployed:**
+
+| Route | Purpose |
+| --- | --- |
+| `/admin/` | Post list + the Publish button |
+| `/admin/edit/new/` | Write a new post |
+| `/admin/edit/<slug>/` | Edit or delete an existing one |
+
+Full detail, including the API endpoints the editor uses, is in
+[DEVELOPING.md §2](./DEVELOPING.md).
+
 ## Writing a post
+
+**Step by step, first time?** Follow the route-by-route walkthrough in
+[DEVELOPING.md §3](./DEVELOPING.md) — it goes from an empty editor to a live
+post, naming the address you're at for each step. The short version:
 
 Open **http://localhost:5050/admin**.
 
