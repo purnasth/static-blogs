@@ -2,19 +2,42 @@
   "name": "blogs-static",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.11.0",
+  "engines": {
+    "node": ">=20.9"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "unrs-resolver"
+    ]
+  },
+  "//TODO:port": "TEMPORARY — dev starts at port 5050 instead of Next's default 3000, because several agent modules run at once and 3000 kept colliding. scripts/dev-port.mjs scans upward from 5050 for the first FREE port, so a busy port never fails the command. Port 5000 is NOT usable on macOS (ControlCenter/AirPlay Receiver owns it). Change the base with `PORT=xxxx pnpm write`. TODO: when the port pressure is gone, point `dev`/`write` back at plain `next dev`, delete scripts/dev-port.mjs, and revert the URLs in README.md and DEVELOPING.md to 3000. See TODO.md.",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev-port.mjs",
+    "write": "node scripts/dev-port.mjs",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p ${PORT:-5050}",
     "lint": "eslint"
   },
   "dependencies": {
+    "gray-matter": "^4.0.3",
+    "marked": "^18.0.9",
     "next": "16.3.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "reading-time": "^1.5.0",
+    "rehype-autolink-headings": "^7.1.0",
+    "rehype-highlight": "^7.0.2",
+    "rehype-slug": "^6.0.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tailwindcss/typography": "^0.5.20",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
