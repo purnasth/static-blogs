@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import PostRow from "@/components/PostRow";
 import { MetaRow } from "@/components/ui";
 import { getAllTags, getPostSummaries } from "@/lib/posts";
 import { site } from "@/lib/site";
 import type { PostSummary } from "@/lib/types";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 /** Newest first, so the year headings descend with the list. */
 function groupByYear(posts: PostSummary[]): [string, PostSummary[]][] {

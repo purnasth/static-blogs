@@ -1,10 +1,19 @@
+import type { Metadata } from "next";
 import NotFoundView from "@/components/NotFoundView";
 import { ButtonLink, LinkList, LinkRow } from "@/components/ui";
 import { RECENT_POSTS_ON_NOT_FOUND } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
 import { getAllTags, getPostSummaries } from "@/lib/posts";
 
-export const metadata = { title: "Page not found" };
+/**
+ * A 404 that gets indexed is a soft-404 in Search Console's eyes and dilutes
+ * the site's crawl budget. This one is explicitly excluded — but still lets
+ * crawlers follow the recovery links below to real pages.
+ */
+export const metadata: Metadata = {
+  title: "Page not found",
+  robots: { index: false, follow: true },
+};
 
 export default function NotFound() {
   const recent = getPostSummaries().slice(0, RECENT_POSTS_ON_NOT_FOUND);

@@ -1,7 +1,32 @@
+import type { Metadata } from "next";
 import TagChip from "@/components/TagChip";
 import { getAllTags } from "@/lib/posts";
+import { site } from "@/lib/site";
 
-export const metadata = { title: "Tags" };
+const DESCRIPTION = `Every topic written about on ${site.title}, with a count of the posts under each.`;
+
+export const metadata: Metadata = {
+  title: "Tags",
+  description: DESCRIPTION,
+  alternates: { canonical: "/tags/" },
+  // Declaring openGraph at all replaces the root layout's block wholesale, so
+  // the site card has to be named again — omit it and this page shares with no
+  // image at all.
+  openGraph: {
+    type: "website",
+    url: "/tags/",
+    title: "Tags",
+    description: DESCRIPTION,
+    siteName: site.title,
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: site.title }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Tags",
+    description: DESCRIPTION,
+    images: ["/opengraph-image"],
+  },
+};
 
 export default function TagsPage() {
   const tags = getAllTags();
