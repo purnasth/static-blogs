@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackLink from "@/components/BackLink";
@@ -14,26 +15,56 @@ import {
   getReadingTime,
   getRelatedPosts,
 } from "@/lib/posts";
+import { site } from "@/lib/site";
 import type { PostSummary } from "@/lib/types";
 
 export function generateStaticParams() {
   return getAllPosts().map((post) => ({ slug: post.slug }));
 }
 
-export async function generateMetadata({ params }: PageProps<"/posts/[slug]">) {
+export async function generateMetadata({ params }: PageProps<"/posts/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const post = getPost(slug);
   if (!post) return {};
+
+  const path = `/posts/${post.slug}/`;
+  // Named explicitly rather than left to the opengraph-image file convention,
+  // which can only attach one hard-coded alt to every post's card. The image is
+  // still the generated one — this just describes it per post.
+  const card = {
+    url: `${path}opengraph-image`,
+    width: 1200,
+    height: 630,
+    alt: `${post.title} — ${site.title}`,
+  };
+
   return {
     title: post.title,
     description: post.summary,
+    // The one URL this post should rank as, however it was reached.
+    alternates: { canonical: path },
     openGraph: {
+      type: "article",
+      url: path,
+      // The bare headline, not the templated "… — Purna Shrestha": og:site_name
+      // already carries the brand, and share cards read better without it.
       title: post.title,
       description: post.summary,
-      type: "article",
+      siteName: site.title,
       publishedTime: post.date,
-      images: post.cover ? [post.cover] : undefined,
+      authors: [site.author],
+      tags: post.tags,
+      images: [card],
     },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.summary,
+      images: [card],
+    },
+    // Drafts never reach a production build, but they are reachable while
+    // writing — this keeps one out of an index if it is ever served.
+    ...(post.draft ? { robots: { index: false, follow: false } } : {}),
   };
 }
 
@@ -89,7 +120,13 @@ export default async function PostPage({ params }: PageProps<"/posts/[slug]">) {
 
         {post.cover && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={post.cover} alt="" className="mb-10 w-full rounded-xl border border-line" />
+          <img
+            src={post.cover}
+            // Describes what the image illustrates, for screen readers and for
+            // image search — an empty alt forfeits both.
+            alt={`Cover image for “${post.title}”`}
+            className="mb-10 w-full rounded-xl border border-line"
+          />
         )}
 
         <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: html }} />

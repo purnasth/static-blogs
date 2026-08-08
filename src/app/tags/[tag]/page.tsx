@@ -1,15 +1,45 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import BackLink from "@/components/BackLink";
 import PostRow from "@/components/PostRow";
 import { getAllTags, getPostSummaries } from "@/lib/posts";
+import { site } from "@/lib/site";
 
 export function generateStaticParams() {
   return getAllTags().map(({ tag }) => ({ tag }));
 }
 
-export async function generateMetadata({ params }: PageProps<"/tags/[tag]">) {
+export async function generateMetadata({ params }: PageProps<"/tags/[tag]">): Promise<Metadata> {
   const { tag } = await params;
-  return { title: `Posts tagged “${decodeURIComponent(tag)}”` };
+  const decoded = decodeURIComponent(tag);
+  const count = getPostSummaries().filter((p) => p.tags.includes(decoded)).length;
+
+  const title = `Posts tagged “${decoded}”`;
+  const description = `${count} ${count === 1 ? "post" : "posts"} tagged ${decoded} on ${site.title}.`;
+  const path = `/tags/${encodeURIComponent(decoded)}/`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: path },
+    // Declaring openGraph at all replaces the root layout's block wholesale, so
+    // the site card has to be named again — omit it and this page shares with
+    // no image at all.
+    openGraph: {
+      type: "website",
+      url: path,
+      title,
+      description,
+      siteName: site.title,
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: site.title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/opengraph-image"],
+    },
+  };
 }
 
 export default async function TagPage({ params }: PageProps<"/tags/[tag]">) {
