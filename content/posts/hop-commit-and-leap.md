@@ -11,9 +11,9 @@ tags:
   - opensource
   - growth
 draft: false
-cover: /images/chatgpt-image-aug-8-2026-04-42-54-pm-2.png
+cover: /images/purna-hop-commit-leap.png.png
 ---
-> I wish my life were a GitHub repository so that I could roll back to my last stable version.
+I wish my life were a GitHub repository so that I could roll back to my last stable version.
 
 Drowning under the weight of life issues, but guess what? I chose to resolve issues on GitHub—just not my own.
 
