@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Sen, JetBrains_Mono } from "next/font/google";
 import SiteShell from "@/components/SiteShell";
 import { themeInitScript } from "@/components/ThemeToggle";
 import { site } from "@/lib/site";
@@ -10,10 +10,11 @@ import "./globals.css";
  * so the deployed site makes no request to Google. The `variable` names are the
  * ones globals.css reads through `--font-sans` / `--font-mono`.
  *
- * Hanken Grotesk ships true italics rather than leaving the browser to fake an
- * oblique — which matters here, because markdown emphasis is everywhere.
+ * Sen is variable across wght 400–800, so it covers every weight the UI asks
+ * for without a `weight` argument. It ships no italic, though — markdown
+ * emphasis renders as a synthesised oblique.
  */
-const sans = Hanken_Grotesk({
+const sans = Sen({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-sans-stack",

@@ -33,7 +33,11 @@
   --brand-on-dark: color-mix(in oklab, var(--brand), white var(--lift));
   --hue-ok-on-dark: color-mix(in oklab, var(--hue-ok), white var(--lift));
   --hue-warn-on-dark: color-mix(in oklab, var(--hue-warn), white var(--lift));
-  --hue-danger-on-dark: color-mix(in oklab, var(--hue-danger), white var(--lift));
+  --hue-danger-on-dark: color-mix(
+    in oklab,
+    var(--hue-danger),
+    white var(--lift)
+  );
   /* ================================================================= */
 
   /* Strength of the derived tints, so all five tones stay consistent. */
@@ -61,9 +65,21 @@
   /* Every tone below follows the same three-step recipe: pick the base for
      the current theme, then derive a fill and a border from it. */
   --accent: light-dark(var(--brand), var(--brand-on-dark));
-  --accent-hover: color-mix(in oklab, var(--accent) 82%, light-dark(#000, #fff));
-  --accent-soft: color-mix(in srgb, var(--accent) var(--tint-fill), transparent);
-  --accent-line: color-mix(in srgb, var(--accent) var(--tint-line), transparent);
+  --accent-hover: color-mix(
+    in oklab,
+    var(--accent) 82%,
+    light-dark(#000, #fff)
+  );
+  --accent-soft: color-mix(
+    in srgb,
+    var(--accent) var(--tint-fill),
+    transparent
+  );
+  --accent-line: color-mix(
+    in srgb,
+    var(--accent) var(--tint-line),
+    transparent
+  );
   --accent-contrast: light-dark(#fff, #1a0f09);
 
   --ok: light-dark(var(--hue-ok), var(--hue-ok-on-dark));
@@ -75,12 +91,21 @@
   --warn-line: color-mix(in srgb, var(--warn) var(--tint-line), transparent);
 
   --danger: light-dark(var(--hue-danger), var(--hue-danger-on-dark));
-  --danger-soft: color-mix(in srgb, var(--danger) var(--tint-fill), transparent);
-  --danger-line: color-mix(in srgb, var(--danger) var(--tint-line), transparent);
+  --danger-soft: color-mix(
+    in srgb,
+    var(--danger) var(--tint-fill),
+    transparent
+  );
+  --danger-line: color-mix(
+    in srgb,
+    var(--danger) var(--tint-line),
+    transparent
+  );
 
   /* Elevation — barely-there, warm rather than grey. */
   --shadow-sm: 0 1px 2px light-dark(#1c1b190d, #0006);
-  --shadow-md: 0 1px 2px light-dark(#1c1b190a, #0000004d),
+  --shadow-md:
+    0 1px 2px light-dark(#1c1b190a, #0000004d),
     0 8px 24px -12px light-dark(#1c1b1929, #000000b3);
 }
 
@@ -183,6 +208,13 @@ body {
   font-synthesis-weight: none;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+body,
+div,
+span,
+p {
+  @apply tracking-tight;
 }
 
 /* One focus style for the whole app. */
