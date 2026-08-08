@@ -1,4 +1,4 @@
-# Cloudflare Pages security headers. Applied to every response.
+# Cloudflare static-asset security headers. Applied to every response.
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

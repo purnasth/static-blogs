@@ -18,16 +18,11 @@ pnpm install      # first time only
 pnpm write        # same as pnpm dev
 ```
 
-- Blog: **http://localhost:5050**
-- Writing desk: **http://localhost:5050/admin**
+- Blog: **http://localhost:3000**
+- Writing desk: **http://localhost:3000/admin**
 
-`Ctrl+C` in that terminal stops it.
-
-> **Note:** the dev server starts at **5050**, not Next's usual 3000 — 3000 was
-> being taken by other things. If 5050 is busy it automatically moves to 5051,
-> 5052, … and prints which port it used, so it never fails to start. Scan from
-> somewhere else with `PORT=7000 pnpm write`. This is temporary; see
-> [TODO.md](./TODO.md) for how to put it back to 3000.
+`Ctrl+C` in that terminal stops it. If 3000 is already taken, Next moves to the
+next free port and prints the one it used — read the terminal.
 
 ## The pages
 
@@ -60,7 +55,7 @@ Full detail, including the API endpoints the editor uses, is in
 [DEVELOPING.md §3](./DEVELOPING.md) — it goes from an empty editor to a live
 post, naming the address you're at for each step. The short version:
 
-Open **http://localhost:5050/admin**.
+Open **http://localhost:3000/admin**.
 
 - **New post** → title, date, tags, summary, cover, draft toggle, markdown body.
 - **Drag an image** into the editor (or paste, or use the *image* button). It's
@@ -117,16 +112,22 @@ src/app/
 2. Replace `src/app/favicon.ico`.
 3. Edit `content/about.md`.
 
-## Deploying to Cloudflare Pages
+## Deploying to Cloudflare
 
 1. Push this repo to GitHub.
-2. Cloudflare dashboard → **Workers & Pages** → **Create** → **Pages** →
+2. Cloudflare dashboard → **Workers & Pages** → **Create** → **Workers** →
    **Connect to Git**, pick the repo.
 3. Build settings:
-   - Framework preset: **None**
    - Build command: `pnpm build`
-   - Build output directory: `out`
+   - Deploy command: `npx wrangler deploy`
 4. Deploy. Every push to `main` rebuilds automatically.
+
+`wrangler.jsonc` is what makes this work: it declares an **assets-only Worker**
+serving `out/`, with no server-side code. Keep it committed — without it,
+`wrangler deploy` guesses that a Next.js repo must be server-rendered and tries
+to convert the project to OpenNext, which fails (see
+[DEVELOPING.md §7](./DEVELOPING.md)). The Worker `name` in that file must match
+the project name in the dashboard.
 
 `public/_headers` sets security and caching headers; Cloudflare applies it.
 

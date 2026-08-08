@@ -33,29 +33,22 @@ Then open two tabs:
 
 | URL | What it is |
 | --- | --- |
-| http://localhost:5050 | the blog, exactly as visitors will see it |
-| http://localhost:5050/admin | the writing desk (only exists locally) |
+| http://localhost:3000 | the blog, exactly as visitors will see it |
+| http://localhost:3000/admin | the writing desk (only exists locally) |
 
-### About the port ⚠️ temporary
+### About the port
 
-Next's default is 3000, but this project starts at **5050** because 3000 kept
-getting taken by other things running at the same time.
+`pnpm write` runs plain `next dev`, so it uses Next's default **3000**. If that
+port is taken, Next moves to the next free one and prints it.
 
-You should never see an "address already in use" error: `pnpm write` goes
-through `scripts/dev-port.mjs`, which scans upward from 5050 and takes the first
-**free** port, printing which one it picked. Plain `next dev -p 5050` would just
-die, and Next's own auto-increment only kicks in when no port is specified —
-starting from 3000, the port we're avoiding.
-
-To scan from a different base:
+To pick a different port:
 
 ```bash
 PORT=7000 pnpm write
 ```
 
 Not 5000 — on macOS that port belongs to ControlCenter (AirPlay Receiver), so
-binding it fails. **This is a temporary workaround; [TODO.md](./TODO.md) has the
-checklist for reverting to 3000.**
+binding it fails.
 
 Note that Next 16 allows only **one dev server per project directory**. Starting
 a second one on a different port exits with "Another next dev server is already
@@ -72,7 +65,7 @@ pkill -f "next dev"; pkill -f "next-server"
 ```
 
 Both patterns matter — `next dev` spawns a `next-server` child, and killing only
-the parent leaves the port held. That is the usual cause of "Port 5050 is in use"
+the parent leaves the port held. That is the usual cause of "Port 3000 is in use"
 when you are sure nothing is running.
 
 ### The commands
@@ -145,7 +138,7 @@ cd ~/Documents/blogs-static
 pnpm write
 ```
 
-Read the port it prints: `Local: http://localhost:5050`. Everywhere below,
+Read the port it prints: `Local: http://localhost:3000`. Everywhere below,
 `<port>` means that number. Leave this terminal running the whole time.
 
 ### Step 2 — open the hub → `http://localhost:<port>/admin`
@@ -345,6 +338,7 @@ src/components/admin/
 
 tsconfig.json             editor + dev server
 tsconfig.build.json       production build only (ignores .next/dev)
+wrangler.jsonc            Cloudflare deploy: assets-only Worker serving out/
 ```
 
 ---
@@ -410,33 +404,64 @@ client-side. Fine up to a few hundred posts.
    git commit -m "Initial commit"
    git push -u origin main
    ```
-3. Cloudflare dashboard → **Workers & Pages** → **Create** → **Pages** →
+3. Cloudflare dashboard → **Workers & Pages** → **Create** → **Workers** →
    **Connect to Git** → pick the repo.
 4. Build settings:
-   - Framework preset: **None**
    - Build command: `pnpm build`
-   - Build output directory: `out`
+   - Deploy command: `npx wrangler deploy`
 5. **Save and Deploy.**
 
 Cloudflare detects pnpm from the committed `pnpm-lock.yaml` and honours the
 `packageManager` field, so there's nothing else to configure. (If a build ever
-uses the wrong pnpm, set a `PNPM_VERSION` environment variable in the Pages
-project to `10.11.0`.)
+uses the wrong pnpm, set a `PNPM_VERSION` environment variable in the project
+to `10.11.0`.)
 
 Once the remote exists, the admin's **Commit & push** button handles every
 subsequent deploy.
 
+### `wrangler.jsonc` — why it must stay committed
+
+The site deploys as an **assets-only Worker**: `wrangler.jsonc` has no `main`
+script, just `assets.directory: "./out"`. Cloudflare serves those files from its
+edge and never runs any code of ours.
+
+That file is not optional. `wrangler deploy` runs framework auto-detection when
+it finds no wrangler config, and its guess for a Next.js repo is a
+*server-rendered* app. It then installs `@opennextjs/cloudflare`, rewrites
+`package.json`, `next.config.ts` and `public/_headers` in the build container,
+and builds against `.next/standalone/` — a directory that only
+`output: "standalone"` produces. This project is `output: "export"`, so the
+build dies with:
+
+```
+Error: ENOENT: no such file or directory, open
+  '.../.next/standalone/.next/server/pages-manifest.json'
+```
+
+The `pnpm build` step will have *succeeded* just above that, which makes the
+failure look mysterious. It isn't — nothing is wrong with the build; the deploy
+step threw the build away and tried to make a different kind of app. A present
+wrangler config skips auto-detection entirely.
+
+Check a config change without touching production:
+
+```bash
+pnpm build && npx wrangler deploy --dry-run
+```
+
+It prints how many files it read from `out/`. No account or login needed.
+
 ### Custom domain
 
-Pages project → **Custom domains** → add yours. If the domain is already on
-Cloudflare, DNS is automatic. Then update `url` in `src/lib/site.ts` and push,
-so RSS and sitemap use the real address.
+Worker → **Settings** → **Domains & Routes** → add yours. If the domain is
+already on Cloudflare, DNS is automatic. Then update `url` in `src/lib/site.ts`
+and push, so RSS and sitemap use the real address.
 
 ### What Cloudflare actually does
 
-Clones the repo → `pnpm install --frozen-lockfile` → `pnpm build` → serves
-`out/` from its edge network. No Node process runs in production.
-`public/_headers` is applied automatically.
+Clones the repo → `pnpm install --frozen-lockfile` → `pnpm build` →
+`npx wrangler deploy` uploads `out/` → serves it from the edge network. No Node
+process runs in production. `public/_headers` is applied automatically.
 
 ---
 
@@ -501,7 +526,7 @@ timestamp object and a quoted one into a string. `toIsoDate()` in
 
 | Symptom | Cause / fix |
 | --- | --- |
-| `Port 5050 is in use` | Usually an orphaned server from a previous run. `pkill -f "next dev"; pkill -f "next-server"`. Next also just picks the next free port — read the terminal. |
+| `Port 3000 is in use` | Usually an orphaned server from a previous run. `pkill -f "next dev"; pkill -f "next-server"`. Next also just picks the next free port — read the terminal. |
 | Build fails: `.next/dev/types/validator.ts ... '/admin' is not assignable` | Dev route types leaking into the build. `tsconfig.build.json` excludes them, so this only bites if you run `next build` directly instead of `pnpm build` — then `rm -rf .next` first. |
 | `pnpm install` warns "Ignored build scripts: unrs-resolver" | Shouldn't happen — `pnpm.onlyBuiltDependencies` in `package.json` approves it. If it does, run `pnpm rebuild`. Harmless either way; ESLint has a JS fallback. |
 | A `package-lock.json` appeared | Someone ran `npm install`. Delete it, `rm -rf node_modules`, `pnpm install`. Two lockfiles will drift and give you different builds locally and on Cloudflare. |
@@ -514,6 +539,8 @@ timestamp object and a quoted one into a string. `toIsoDate()` in
 | Styles look wrong after editing CSS | Hard reload (`⌘⇧R`). If it persists, restart the dev server. |
 | Editor loads but Save does nothing | Open the browser console. A 400 response carries the reason (missing title, bad date, duplicate slug). |
 | Everything is broken after a dependency update | `rm -rf .next node_modules && pnpm install`. |
+| Cloudflare build fails at the deploy step: `ENOENT ... .next/standalone/.next/server/pages-manifest.json`, after logs about `@opennextjs/cloudflare` | `wrangler.jsonc` is missing or wasn't committed, so `wrangler deploy` auto-detected Next.js and tried to deploy it as a server-rendered app. Restore the file (§7) and push. |
+| Cloudflare deploy: `workers.api.error.script_not_found` or it creates a second Worker | The `name` in `wrangler.jsonc` doesn't match the Worker in the dashboard. Make them identical. |
 
 ---
 

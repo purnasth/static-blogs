@@ -8,15 +8,16 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "unrs-resolver"
+      "unrs-resolver",
+      "esbuild",
+      "workerd"
     ]
   },
-  "//TODO:port": "TEMPORARY — dev starts at port 5050 instead of Next's default 3000, because several agent modules run at once and 3000 kept colliding. scripts/dev-port.mjs scans upward from 5050 for the first FREE port, so a busy port never fails the command. Port 5000 is NOT usable on macOS (ControlCenter/AirPlay Receiver owns it). Change the base with `PORT=xxxx pnpm write`. TODO: when the port pressure is gone, point `dev`/`write` back at plain `next dev`, delete scripts/dev-port.mjs, and revert the URLs in README.md and DEVELOPING.md to 3000. See TODO.md.",
   "scripts": {
-    "dev": "node scripts/dev-port.mjs",
-    "write": "node scripts/dev-port.mjs",
+    "dev": "next dev",
+    "write": "next dev",
     "build": "next build",
-    "start": "next start -p ${PORT:-5050}",
+    "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
@@ -44,6 +45,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "4.120.0"
   }
 }

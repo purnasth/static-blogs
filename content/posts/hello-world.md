@@ -21,7 +21,7 @@ by hand. Run the writing desk locally:
 pnpm dev
 ```
 
-Then open [localhost:5050/admin](http://localhost:5050/admin). Write the post in
+Then open [localhost:3000/admin](http://localhost:3000/admin). Write the post in
 a normal editor, drag images straight into the text, and hit **Save** — the file
 is written to disk for you. When you're happy, hit **Commit & push** and the
 host rebuilds the site.

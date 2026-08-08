@@ -1,0 +1,27 @@
+{
+  // Deploy config for Cloudflare Workers.
+  //
+  // This site is a PURE STATIC EXPORT: `pnpm build` writes plain HTML/CSS/JS to
+  // `out/` and there is no server. So this Worker has no `main` script — it is
+  // an assets-only Worker that just serves that directory.
+  //
+  // This file must exist and be committed. Without a wrangler config,
+  // `wrangler deploy` runs its framework auto-detection, sees Next.js, assumes
+  // a server-rendered app, and migrates the project to @opennextjs/cloudflare —
+  // which then fails looking for `.next/standalone`, a directory that
+  // `output: "export"` never produces. See DEVELOPING.md §7.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "static-blogs",
+  "compatibility_date": "2026-08-08",
+  "assets": {
+    "directory": "./out",
+    // `trailingSlash: true` in next.config.ts means every page is
+    // `out/<route>/index.html`; auto-trailing-slash resolves both forms.
+    "html_handling": "auto-trailing-slash",
+    // Serves out/404.html for unmatched paths instead of a bare 404.
+    "not_found_handling": "404-page"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
