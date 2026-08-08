@@ -1,122 +1,211 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import PublishPanel from "@/components/admin/PublishPanel";
+import {
+  ButtonLink,
+  Input,
+  MetaRow,
+  Panel,
+  SegmentedControl,
+  StatusBadge,
+  type Segment,
+} from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import type { PublishStatus } from "@/lib/storage";
+import { PostFilter } from "@/lib/enums";
 import type { Post } from "@/lib/types";
 
-type Props = {
-  posts: Post[];
-  status: PublishStatus;
-};
+const FILTERS: readonly Segment<PostFilter>[] = [
+  { value: PostFilter.All, label: "All" },
+  { value: PostFilter.Published, label: "Published" },
+  { value: PostFilter.Draft, label: "Draft" },
+];
 
-export default function PostList({ posts, status }: Props) {
-  const router = useRouter();
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+function matches(post: Post, needle: string) {
+  if (!needle) return true;
+  return (
+    post.title.toLowerCase().includes(needle) ||
+    post.slug.includes(needle) ||
+    post.summary.toLowerCase().includes(needle) ||
+    post.tags.some((tag) => tag.toLowerCase().includes(needle))
+  );
+}
 
-  async function publish() {
-    setBusy(true);
-    setNotice(null);
-    try {
-      const res = await fetch("/api/publish/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
-      });
-      const data = await res.json();
-      setNotice({ kind: data.ok ? "ok" : "error", text: data.detail ?? data.error });
-      setMessage("");
-      router.refresh();
-    } catch (error) {
-      setNotice({ kind: "error", text: error instanceof Error ? error.message : "Publish failed." });
-    } finally {
-      setBusy(false);
-    }
-  }
+export default function PostList({ posts, status }: { posts: Post[]; status: PublishStatus }) {
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<PostFilter>(PostFilter.All);
+
+  const drafts = posts.filter((p) => p.draft).length;
+
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return posts.filter(
+      (post) =>
+        (filter === PostFilter.All || (filter === PostFilter.Draft) === post.draft) && matches(post, needle),
+    );
+  }, [posts, query, filter]);
 
   return (
-    <div className="space-y-10">
-      <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight">Posts</h1>
-          <Link
-            href="/admin/edit/new/"
-            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
-          >
-            New post
-          </Link>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-title font-semibold">Posts</h1>
+          <p className="mt-1 text-meta text-muted">
+            Everything in <span className="font-mono">content/posts/</span>. Drafts stay out of the
+            built site.
+          </p>
+        </div>
+        <ButtonLink href="/admin/edit/new/" variant="primary">
+          <span aria-hidden>+</span> New post
+        </ButtonLink>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Total" value={posts.length} />
+        <Stat label="Published" value={posts.length - drafts} tone="text-ok" />
+        <Stat label="Drafts" value={drafts} tone="text-warn" />
+        <Stat label="Latest" value={posts[0] ? formatDate(posts[0].date) : "—"} small />
+      </div>
+
+      <Panel>
+        <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter by title, slug, summary or tag…"
+            aria-label="Filter posts"
+            className="min-w-48 flex-1"
+          />
+          <SegmentedControl
+            value={filter}
+            onChange={setFilter}
+            segments={FILTERS}
+            label="Status filter"
+          />
         </div>
 
-        {posts.length === 0 ? (
-          <p className="text-muted">Nothing written yet.</p>
+        {visible.length === 0 ? (
+          <Empty
+            title={posts.length === 0 ? "Nothing written yet" : "No matches"}
+            body={
+              posts.length === 0
+                ? "Your first post will be saved to content/posts/ as a plain markdown file."
+                : `Nothing here matches “${query}”${filter !== PostFilter.All ? ` in ${filter}` : ""}.`
+            }
+            action={
+              posts.length === 0 ? (
+                <Link href="/admin/edit/new/">Write the first one →</Link>
+              ) : (
+                <button
+                  onClick={() => {
+                    setQuery("");
+                    setFilter(PostFilter.All);
+                  }}
+                >
+                  Clear filters
+                </button>
+              )
+            }
+          />
         ) : (
-          <ul className="divide-y divide-line rounded-lg border border-line">
-            {posts.map((post) => (
-              <li key={post.slug} className="flex items-center justify-between gap-4 px-4 py-3">
-                <div className="min-w-0">
-                  <Link
-                    href={`/admin/edit/${post.slug}/`}
-                    className="block truncate font-medium hover:text-accent"
-                  >
-                    {post.title}
-                  </Link>
-                  <div className="mt-0.5 flex items-center gap-2 text-xs text-muted">
-                    <span>{formatDate(post.date)}</span>
-                    {post.tags.length > 0 && <span>· {post.tags.join(", ")}</span>}
+          <ul className="divide-y divide-line">
+            {visible.map((post) => (
+              <li
+                key={post.slug}
+                className="group flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-inset"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/admin/edit/${post.slug}/`}
+                      className="truncate font-medium transition-colors hover:text-accent"
+                    >
+                      {post.title || <span className="text-subtle">Untitled</span>}
+                    </Link>
+                    <StatusBadge draft={post.draft} />
                   </div>
+
+                  <MetaRow
+                    className="mt-1"
+                    items={[
+                      <time key="date" dateTime={post.date}>
+                        {formatDate(post.date)}
+                      </time>,
+                      <span key="slug" className="truncate font-mono text-subtle">
+                        /{post.slug}/
+                      </span>,
+                      post.tags.length > 0 && (
+                        <span key="tags" className="truncate">
+                          {post.tags.join(", ")}
+                        </span>
+                      ),
+                    ]}
+                  />
                 </div>
-                <div className="flex shrink-0 items-center gap-3 text-xs">
-                  {post.draft ? (
-                    <span className="rounded bg-accent/15 px-1.5 py-0.5 text-accent">draft</span>
-                  ) : (
-                    <span className="text-muted">published</span>
-                  )}
-                  <a href={`/posts/${post.slug}/`} target="_blank" className="text-muted hover:text-accent">
-                    preview ↗
+
+                <div className="flex shrink-0 items-center gap-1">
+                  <a
+                    href={`/posts/${post.slug}/`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md px-2 py-1 text-meta text-muted opacity-0 transition-opacity hover:text-accent focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    View ↗
                   </a>
+                  <ButtonLink href={`/admin/edit/${post.slug}/`} size="sm">
+                    Edit
+                  </ButtonLink>
                 </div>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </Panel>
 
-      <section className="rounded-lg border border-line p-4">
-        <h2 className="font-semibold">Publish</h2>
-        <p className="mt-1 text-sm text-muted">
-          Branch <span className="font-mono">{status.branch}</span> ·{" "}
-          {status.remote ? "remote connected" : "no remote configured"} ·{" "}
-          {status.dirty.length === 0
-            ? "nothing to publish"
-            : `${status.dirty.length} unpublished change(s)`}
-        </p>
+      <PublishPanel status={status} />
+    </div>
+  );
+}
 
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="What changed? (optional)"
-            className="flex-1 rounded-md border border-line bg-transparent px-3 py-1.5 text-sm outline-none focus:border-accent"
-          />
-          <button
-            onClick={publish}
-            disabled={busy || status.dirty.length === 0}
-            className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40"
-          >
-            {busy ? "Publishing…" : "Commit & push"}
-          </button>
-        </div>
+function Stat({
+  label,
+  value,
+  tone = "text-foreground",
+  small,
+}: {
+  label: string;
+  value: string | number;
+  tone?: string;
+  small?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-line bg-raised px-4 py-3 shadow-sm">
+      <p className="eyebrow">{label}</p>
+      <p className={`mt-1 font-semibold tabular-nums ${tone} ${small ? "text-sm" : "text-xl"}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
 
-        {notice && (
-          <p className={`mt-3 text-sm ${notice.kind === "ok" ? "text-muted" : "text-accent"}`}>
-            {notice.text}
-          </p>
-        )}
-      </section>
+function Empty({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action: React.ReactNode;
+}) {
+  return (
+    <div className="px-4 py-14 text-center">
+      <p className="font-medium">{title}</p>
+      <p className="mx-auto mt-1.5 max-w-sm text-meta text-muted">{body}</p>
+      <div className="mt-4 text-meta font-medium text-accent [&_a:hover]:underline [&_button:hover]:underline">
+        {action}
+      </div>
     </div>
   );
 }

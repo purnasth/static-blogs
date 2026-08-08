@@ -1,66 +1,317 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* ---------------------------------------------------------------------------
+   Design tokens
+
+   Every token is declared ONCE via `light-dark()`, which resolves against the
+   `color-scheme` property. That means theming is a single declaration per
+   token instead of a light block plus a duplicated dark block, and the theme
+   switch below is just three lines of CSS.
+
+   Three groups, in order: surfaces (how far a thing sits off the page), text
+   (how loud it is), and state (what it means). Anything meaning "link or
+   primary action" uses --accent; anything meaning "danger", "ok" or "pending"
+   gets its own token, so colour always carries information.
+   --------------------------------------------------------------------------- */
 :root {
-  --background: #fdfdfc;
-  --foreground: #1c1b19;
-  --muted: #6b6862;
-  --border: #e5e2dc;
-  --accent: #b0451f;
+  color-scheme: light dark;
+
+  /* ===== BRAND ==================================================== *
+   * Change --brand and the whole site follows: links, buttons, focus
+   * rings, tints, borders and the editor's syntax highlighting.
+   * Dark-theme variants are lightened automatically, because a colour
+   * picked for white will not carry enough contrast on black.
+   * Override any *-on-dark below only to hand-tune a specific tone.  */
+  --brand: #b0451f;
+
+  --hue-ok: #3f7247;
+  --hue-warn: #97600d;
+  --hue-danger: #b3261e;
+
+  --lift: 42%;
+  --brand-on-dark: color-mix(in oklab, var(--brand), white var(--lift));
+  --hue-ok-on-dark: color-mix(in oklab, var(--hue-ok), white var(--lift));
+  --hue-warn-on-dark: color-mix(in oklab, var(--hue-warn), white var(--lift));
+  --hue-danger-on-dark: color-mix(in oklab, var(--hue-danger), white var(--lift));
+  /* ================================================================= */
+
+  /* Strength of the derived tints, so all five tones stay consistent. */
+  --tint-fill: 10%;
+  --tint-line: 25%;
+
+  /* Surfaces — raised sits above the page, inset sinks below it. */
+  --bg: light-dark(#fdfdfc, #101010);
+  --bg-raised: light-dark(#ffffff, #191817);
+  --bg-inset: light-dark(#f4f2ee, #0a0a0a);
+  --bg-active: light-dark(#0000000a, #ffffff0a);
+  /* Translucent page colour for sticky bars sitting over content. */
+  --bg-veil: light-dark(#fdfdfcd6, #101010d6);
+  --overlay: light-dark(#1c1b1966, #000000a6);
+
+  /* Text, loudest to quietest. */
+  --fg: light-dark(#1c1b19, #e8e6e1);
+  --fg-muted: light-dark(#6b6862, #9a968e);
+  --fg-subtle: light-dark(#96928a, #726e67);
+
+  /* Hairlines. */
+  --line: light-dark(#e5e2dc, #2a2926);
+  --line-strong: light-dark(#d2cec6, #3d3b37);
+
+  /* Every tone below follows the same three-step recipe: pick the base for
+     the current theme, then derive a fill and a border from it. */
+  --accent: light-dark(var(--brand), var(--brand-on-dark));
+  --accent-hover: color-mix(in oklab, var(--accent) 82%, light-dark(#000, #fff));
+  --accent-soft: color-mix(in srgb, var(--accent) var(--tint-fill), transparent);
+  --accent-line: color-mix(in srgb, var(--accent) var(--tint-line), transparent);
+  --accent-contrast: light-dark(#fff, #1a0f09);
+
+  --ok: light-dark(var(--hue-ok), var(--hue-ok-on-dark));
+  --ok-soft: color-mix(in srgb, var(--ok) var(--tint-fill), transparent);
+  --ok-line: color-mix(in srgb, var(--ok) var(--tint-line), transparent);
+
+  --warn: light-dark(var(--hue-warn), var(--hue-warn-on-dark));
+  --warn-soft: color-mix(in srgb, var(--warn) var(--tint-fill), transparent);
+  --warn-line: color-mix(in srgb, var(--warn) var(--tint-line), transparent);
+
+  --danger: light-dark(var(--hue-danger), var(--hue-danger-on-dark));
+  --danger-soft: color-mix(in srgb, var(--danger) var(--tint-fill), transparent);
+  --danger-line: color-mix(in srgb, var(--danger) var(--tint-line), transparent);
+
+  /* Elevation — barely-there, warm rather than grey. */
+  --shadow-sm: 0 1px 2px light-dark(#1c1b190d, #0006);
+  --shadow-md: 0 1px 2px light-dark(#1c1b190a, #0000004d),
+    0 8px 24px -12px light-dark(#1c1b1929, #000000b3);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #101010;
-    --foreground: #e8e6e1;
-    --muted: #9a968e;
-    --border: #2a2926;
-    --accent: #e8825a;
-  }
+/* The whole theme switch. ThemeToggle writes data-theme onto <html>. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-line: var(--border);
+  --color-background: var(--bg);
+  --color-raised: var(--bg-raised);
+  --color-inset: var(--bg-inset);
+  --color-active: var(--bg-active);
+  --color-veil: var(--bg-veil);
+  --color-overlay: var(--overlay);
+
+  --color-foreground: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-subtle: var(--fg-subtle);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
   --color-accent: var(--accent);
-  --font-sans: var(--font-sans-stack);
-  --font-mono: var(--font-mono-stack);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-accent-contrast: var(--accent-contrast);
+
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-ok-line: var(--ok-line);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-line: var(--danger-line);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-line: var(--warn-line);
+
+  --font-sans: var(--font-sans-stack), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-stack), ui-monospace, SFMono-Regular, monospace;
+
+  /* Type scale. The two display sizes are fluid; everything else is fixed so
+     UI chrome stays predictable. */
+  --text-display: clamp(2.125rem, 1.6rem + 2.2vw, 2.75rem);
+  --text-display--line-height: 1.08;
+  --text-display--letter-spacing: -0.028em;
+  --text-title: clamp(1.375rem, 1.2rem + 0.8vw, 1.6rem);
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.022em;
+  --text-lede: 1.1875rem;
+  --text-lede--line-height: 1.6;
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.7;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.45;
+  /* UI chrome: wordmarks, toolbar glyphs. */
+  --text-ui: 0.9375rem;
+  --text-ui--line-height: 1.4;
+  /* Badges and other small labels. */
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.45;
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+}
+
+/* A metadata line: dates, reading time, small labels. Used across the blog and
+   the writing desk, so it earns a utility rather than a repeated class list. */
+@utility meta {
+  font-size: var(--text-meta);
+  line-height: var(--text-meta--line-height);
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+}
+
+/* A sticky bar that lets content show through it. */
+@utility veil {
+  background-color: var(--bg-veil);
+  backdrop-filter: blur(12px);
+}
+
+/* Small caps-ish section label. */
+@utility eyebrow {
+  font-size: var(--text-meta);
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--fg);
   font-family: var(--font-sans-stack, ui-sans-serif, system-ui, sans-serif);
+  font-synthesis-weight: none;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Article typography */
+/* One focus style for the whole app. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* Native <dialog> backdrop, used by ConfirmDialog. */
+dialog::backdrop {
+  background: var(--overlay);
+  backdrop-filter: blur(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Article typography
+
+   These rules style HTML generated at build time from markdown, so they have
+   no class names to hook Tailwind utilities onto — plain CSS is the right tool.
+   --------------------------------------------------------------------------- */
 .prose {
-  --tw-prose-body: var(--foreground);
-  --tw-prose-headings: var(--foreground);
+  --tw-prose-body: var(--fg);
+  --tw-prose-headings: var(--fg);
+  --tw-prose-lead: var(--fg-muted);
   --tw-prose-links: var(--accent);
-  --tw-prose-bold: var(--foreground);
-  --tw-prose-quotes: var(--muted);
-  --tw-prose-quote-borders: var(--border);
-  --tw-prose-code: var(--foreground);
-  --tw-prose-hr: var(--border);
-  --tw-prose-captions: var(--muted);
-  --tw-prose-th-borders: var(--border);
-  --tw-prose-td-borders: var(--border);
+  --tw-prose-bold: var(--fg);
+  --tw-prose-counters: var(--fg-muted);
+  --tw-prose-bullets: var(--line-strong);
+  --tw-prose-quotes: var(--fg);
+  --tw-prose-quote-borders: var(--accent);
+  --tw-prose-code: var(--fg);
+  --tw-prose-hr: var(--line);
+  --tw-prose-captions: var(--fg-muted);
+  --tw-prose-th-borders: var(--line-strong);
+  --tw-prose-td-borders: var(--line);
+
+  font-size: var(--text-body);
+  line-height: 1.75;
+}
+
+.prose :is(h2, h3, h4) {
+  letter-spacing: -0.02em;
+  scroll-margin-top: 6rem;
+}
+
+.prose h2 {
+  font-size: 1.4em;
+  margin-top: 2.4em;
+  padding-top: 0.9em;
+  border-top: 1px solid var(--line);
+}
+
+.prose h2:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .prose img {
-  border-radius: 0.5rem;
+  border-radius: 0.625rem;
+  border: 1px solid var(--line);
   margin-inline: auto;
 }
 
-.prose h2 a,
-.prose h3 a,
-.prose h4 a {
+.prose figcaption {
+  text-align: center;
+  font-size: var(--text-meta);
+}
+
+/* Heading anchors: rehype-autolink-headings wraps the whole heading, so the
+   link itself must stay invisible. The # marker only appears on hover. */
+.prose :is(h2, h3, h4) > a {
   color: inherit;
   text-decoration: none;
+  position: relative;
+}
+
+.prose :is(h2, h3, h4) > a::after {
+  content: "#";
+  position: absolute;
+  margin-left: 0.35em;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.prose :is(h2, h3, h4) > a:hover::after,
+.prose :is(h2, h3, h4) > a:focus-visible::after {
+  opacity: 1;
+}
+
+.prose a:not(:is(h2, h3, h4) > a) {
+  text-decoration-color: var(--accent-line);
+  text-underline-offset: 0.18em;
+  transition: text-decoration-color 120ms ease;
+}
+
+.prose a:not(:is(h2, h3, h4) > a):hover {
+  text-decoration-color: var(--accent);
+}
+
+.prose blockquote {
+  border-left-width: 2px;
+  padding-block: 0.35em;
+  padding-inline-start: 1.1em;
+  background: var(--accent-soft);
+  border-radius: 0 0.375rem 0.375rem 0;
+  font-style: normal;
+}
+
+.prose blockquote p:first-of-type::before,
+.prose blockquote p:last-of-type::after {
+  content: none;
 }
 
 /* The typography plugin wraps inline code in literal backticks by default. */
@@ -70,22 +321,43 @@ body {
 }
 
 .prose :not(pre) > code {
-  background: color-mix(in srgb, var(--foreground) 8%, transparent);
-  border-radius: 0.25rem;
-  padding: 0.15em 0.35em;
-  font-weight: 500;
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+  padding: 0.12em 0.36em;
+  font-size: 0.875em;
+  font-weight: 450;
 }
 
 .prose pre {
-  background: color-mix(in srgb, var(--foreground) 6%, transparent);
-  border: 1px solid var(--border);
-  color: var(--foreground);
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  border-radius: 0.625rem;
+  color: var(--fg);
+  font-size: 0.875em;
+  line-height: 1.65;
 }
 
-/* Minimal syntax highlighting that works in both themes */
+.prose table {
+  font-size: 0.9375em;
+}
+
+.prose thead th {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.prose hr {
+  margin-block: 3em;
+}
+
+/* ---------------------------------------------------------------------------
+   Syntax highlighting — one accent-derived ramp, works in both themes.
+   Shared by rendered posts (rehype-highlight) and the editor's preview pane.
+   --------------------------------------------------------------------------- */
 .hljs-comment,
 .hljs-quote {
-  color: var(--muted);
+  color: var(--fg-subtle);
   font-style: italic;
 }
 .hljs-keyword,
@@ -97,11 +369,18 @@ body {
 .hljs-string,
 .hljs-attr,
 .hljs-addition {
-  color: color-mix(in srgb, var(--accent) 55%, var(--foreground));
+  color: var(--ok);
 }
 .hljs-number,
 .hljs-title,
 .hljs-type,
 .hljs-built_in {
-  color: color-mix(in srgb, var(--accent) 80%, var(--foreground));
+  color: color-mix(in srgb, var(--accent) 78%, var(--fg));
+}
+.hljs-meta,
+.hljs-symbol {
+  color: var(--warn);
+}
+.hljs-deletion {
+  color: var(--danger);
 }

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import readingTime from "reading-time";
+import { RELATED_POSTS_LIMIT } from "@/lib/constants";
 import type { Post, PostFrontmatter, PostSummary } from "@/lib/types";
 
 export const POSTS_DIR = path.join(process.cwd(), "content", "posts");
@@ -61,6 +62,42 @@ export function getPost(slug: string): Post | null {
   if (!post) return null;
   if (post.draft && !showDrafts) return null;
   return post;
+}
+
+/** Human reading estimate for a single post body, e.g. "6 min read". */
+export function getReadingTime(body: string): string {
+  return readingTime(body).text;
+}
+
+/**
+ * The posts either side of `slug` in the site's own order (newest first), so a
+ * reader can walk the archive without going back to the index. `newer` is the
+ * post published after this one.
+ */
+export function getAdjacentPosts(slug: string): {
+  newer: PostSummary | null;
+  older: PostSummary | null;
+} {
+  const posts = getPostSummaries();
+  const index = posts.findIndex((p) => p.slug === slug);
+  if (index === -1) return { newer: null, older: null };
+  return {
+    newer: posts[index - 1] ?? null,
+    older: posts[index + 1] ?? null,
+  };
+}
+
+/** Other posts sharing at least one tag, most overlap first. */
+export function getRelatedPosts(slug: string, tags: string[], limit = RELATED_POSTS_LIMIT): PostSummary[] {
+  if (tags.length === 0) return [];
+  const wanted = new Set(tags);
+  return getPostSummaries()
+    .filter((p) => p.slug !== slug)
+    .map((p) => ({ post: p, shared: p.tags.filter((t) => wanted.has(t)).length }))
+    .filter(({ shared }) => shared > 0)
+    .sort((a, b) => b.shared - a.shared || (a.post.date < b.post.date ? 1 : -1))
+    .slice(0, limit)
+    .map(({ post }) => post);
 }
 
 export function getAllTags(): { tag: string; count: number }[] {

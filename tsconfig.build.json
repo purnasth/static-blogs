@@ -1,5 +1,5 @@
 {
-  "//": "Used only by `pnpm build` (see typescript.tsconfigPath in next.config.ts). Identical to tsconfig.json except it ignores .next/dev, the route types `next dev` generates — those include the dev-only /admin routes and clash with the production route map.",
+  "//": "Used only by `pnpm build` (see typescript.tsconfigPath in next.config.ts). Differs from tsconfig.json in two ways. (1) It ignores .next/dev, the route types `next dev` generates — those include the dev-only /admin routes and clash with the production route map. (2) It ignores the writing desk itself. Those files are not routes in a production build, so type-checking them would only force their dev-only dependencies (CodeMirror) to be installed on the deploy machine. They are still fully checked in development via tsconfig.json.",
   "extends": "./tsconfig.json",
   "include": [
     "next-env.d.ts",
@@ -8,5 +8,11 @@
     ".next/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", ".next/dev"]
+  "exclude": [
+    "node_modules",
+    ".next/dev",
+    "**/*.dev.ts",
+    "**/*.dev.tsx",
+    "src/components/admin/**"
+  ]
 }

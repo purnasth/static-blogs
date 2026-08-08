@@ -10,7 +10,9 @@ export default async function AboutPage() {
   const markdown = fs.existsSync(ABOUT_FILE)
     ? fs.readFileSync(ABOUT_FILE, "utf8")
     : "# About\n\nEdit `content/about.md` to change this page.";
-  const html = await renderMarkdown(markdown);
+  const { html } = await renderMarkdown(markdown);
 
-  return <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: html }} />;
+  return (
+    <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: html }} />
+  );
 }
