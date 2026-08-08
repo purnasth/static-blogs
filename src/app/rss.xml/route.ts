@@ -18,7 +18,7 @@ export async function GET() {
   const items = await Promise.all(
     posts.map(async (post) => {
       const url = `${site.url}/posts/${post.slug}/`;
-      const html = await renderMarkdown(post.body);
+      const { html } = await renderMarkdown(post.body);
       return `    <item>
       <title>${escapeXml(post.title)}</title>
       <link>${url}</link>

@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import BackLink from "@/components/BackLink";
+import PostRow from "@/components/PostRow";
 import { getAllTags, getPostSummaries } from "@/lib/posts";
-import { formatDate } from "@/lib/format";
 
 export function generateStaticParams() {
   return getAllTags().map(({ tag }) => ({ tag }));
@@ -20,20 +20,20 @@ export default async function TagPage({ params }: PageProps<"/tags/[tag]">) {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight">
-        Tagged <span className="text-accent">{decoded}</span>
-      </h1>
-      <ul className="space-y-6">
+      <header className="border-b border-line pb-8">
+        <BackLink href="/tags/">All tags</BackLink>
+        <h1 className="mt-5 text-display font-semibold">
+          <span className="text-muted">Tagged</span> {decoded}
+        </h1>
+        <p className="mt-3 text-lede text-muted">
+          {posts.length} {posts.length === 1 ? "post" : "posts"}
+        </p>
+      </header>
+
+      <ul className="divide-y divide-line">
         {posts.map((post) => (
           <li key={post.slug}>
-            <time className="text-sm text-muted" dateTime={post.date}>
-              {formatDate(post.date)}
-            </time>
-            <h2 className="text-lg font-semibold tracking-tight">
-              <Link href={`/posts/${post.slug}/`} className="hover:text-accent">
-                {post.title}
-              </Link>
-            </h2>
+            <PostRow post={post} />
           </li>
         ))}
       </ul>
