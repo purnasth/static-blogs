@@ -1,23 +1,22 @@
 import type { Metadata } from "next";
-import { Sen, JetBrains_Mono } from "next/font/google";
+import { Sen, Gelasio, JetBrains_Mono } from "next/font/google";
 import SiteShell from "@/components/SiteShell";
 import { themeInitScript } from "@/components/ThemeToggle";
 import { site } from "@/lib/site";
 import "./globals.css";
 
-/**
- * next/font downloads these at build time and serves them from our own origin,
- * so the deployed site makes no request to Google. The `variable` names are the
- * ones globals.css reads through `--font-sans` / `--font-mono`.
- *
- * Sen is variable across wght 400–800, so it covers every weight the UI asks
- * for without a `weight` argument. It ships no italic, though — markdown
- * emphasis renders as a synthesised oblique.
- */
 const sans = Sen({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-sans-stack",
+});
+
+const italic = Gelasio({
+  subsets: ["latin"],
+  style: "italic",
+  weight: ["400", "600"],
+  display: "swap",
+  variable: "--font-italic-stack",
 });
 
 const mono = JetBrains_Mono({
@@ -37,13 +36,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${sans.variable} ${mono.variable} h-full antialiased`}
-      // themeInitScript writes data-theme here before React hydrates, so this
-      // element's attributes are expected to differ from the server render.
+      className={`${sans.variable} ${italic.variable} ${mono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
-        {/* Must run before paint, or a stored dark theme flashes light. */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full">

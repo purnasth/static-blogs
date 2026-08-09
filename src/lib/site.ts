@@ -9,8 +9,9 @@ export type NavItem = {
 
 /** Edit these once — they feed the header, footer, page titles and RSS feed. */
 export const site = {
-  title: "Purna Shrestha",
-  description: "Writing, notes and photographs.",
+  title: "Pages by Purna",
+  description:
+    "Pages by Purna is a blogs platform through which I share my thoughts, experiences, and insights on various topics. It serves as a personal space for me to express myself and connect with like-minded individuals. Be it technology, lifestyle, or any other subject that piques my interest, I aim to provide valuable content that informs, inspires, and sparks meaningful conversations. Join me on this journey as I explore the world through my words and share my unique perspective with you.",
   author: "Purna Shrestha",
   // Set this to your real domain before deploying; used for absolute URLs in RSS.
   url: "https://example.com",

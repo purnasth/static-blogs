@@ -37,7 +37,7 @@ export const links: readonly ProfileLink[] = [
   {
     label: "Portfolio",
     href: "https://www.purnashrestha.com.np/",
-    handle: "purnashrestha.com.np",
+    handle: "www.purnashrestha.com.np",
   },
 ];
 

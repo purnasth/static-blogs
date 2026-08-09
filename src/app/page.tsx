@@ -26,7 +26,7 @@ export default function Home() {
     <div>
       <section className="border-b border-line pb-10">
         <h1 className="text-balance text-display font-semibold">{site.title}</h1>
-        <p className="mt-4 max-w-xl text-pretty text-lede text-muted">{site.description}</p>
+        <p className="mt-4 max-w-xl text-pretty text-sm text-muted">{site.description}</p>
 
         {posts.length > 0 && (
           <MetaRow
