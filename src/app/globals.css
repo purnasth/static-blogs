@@ -5,6 +5,7 @@
   color-scheme: light dark;
 
   --brand: #b0451f;
+  --brand-alt: #bd8324;
 
   --hue-ok: #3f7247;
   --hue-warn: #97600d;
@@ -12,6 +13,7 @@
 
   --lift: 42%;
   --brand-on-dark: color-mix(in oklab, var(--brand), white var(--lift));
+  --brand-alt-on-dark: color-mix(in oklab, var(--brand-alt), white var(--lift));
   --hue-ok-on-dark: color-mix(in oklab, var(--hue-ok), white var(--lift));
   --hue-warn-on-dark: color-mix(in oklab, var(--hue-warn), white var(--lift));
   --hue-danger-on-dark: color-mix(
@@ -79,6 +81,23 @@
   --shadow-md:
     0 1px 2px light-dark(#1c1b190a, #0000004d),
     0 8px 24px -12px light-dark(#1c1b1929, #000000b3);
+  --shadow-lg:
+    0 1px 2px light-dark(#1c1b190a, #00000059),
+    0 28px 56px -24px light-dark(#1c1b1933, #000000cc);
+
+  --wash-a: light-dark(
+    color-mix(in oklab, var(--brand) 26%, transparent),
+    color-mix(in oklab, var(--brand-on-dark) 17%, transparent)
+  );
+  --wash-b: light-dark(
+    color-mix(in oklab, var(--brand-alt) 24%, transparent),
+    color-mix(in oklab, var(--brand-alt-on-dark) 14%, transparent)
+  );
+
+  --art-l: light-dark(50%, 56%);
+  --art-o-a: light-dark(0.52, 0.46);
+  --art-o-b: light-dark(0.4, 0.34);
+  --art-o-line: light-dark(0.1, 0.09);
 }
 
 :root[data-theme="light"] {
@@ -124,6 +143,9 @@
   --font-mono: var(--font-mono-stack), ui-monospace, SFMono-Regular, monospace;
   --font-italic: var(--font-italic-stack), ui-serif, Georgia, serif;
 
+  --text-hero: clamp(2.5rem, 1.55rem + 4vw, 4.125rem);
+  --text-hero--line-height: 1.03;
+  --text-hero--letter-spacing: -0.038em;
   --text-display: clamp(2.125rem, 1.6rem + 2.2vw, 2.75rem);
   --text-display--line-height: 1.08;
   --text-display--letter-spacing: -0.028em;
@@ -143,6 +165,36 @@
 
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  --animate-wave: wave 2.5s infinite;
+}
+
+@keyframes wave {
+  0% {
+    transform: rotate(0);
+  }
+  10% {
+    transform: rotate(14deg);
+  }
+  20% {
+    transform: rotate(-8deg);
+  }
+  30% {
+    transform: rotate(14deg);
+  }
+  40% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+  60% {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(0);
+  }
 }
 
 @utility meta {
@@ -165,9 +217,69 @@
   color: var(--fg-subtle);
 }
 
+/** Two offset radial washes in the brand hues. Sits behind the hero, never in
+    front of text, so the alpha stays low enough to keep contrast intact. */
+@utility aurora {
+  background-image:
+    radial-gradient(48% 44% at 18% 8%, var(--wash-a), transparent 72%),
+    radial-gradient(42% 40% at 82% 0%, var(--wash-b), transparent 70%),
+    radial-gradient(60% 50% at 50% 100%, var(--wash-a), transparent 78%);
+}
+
+/** Faint graph paper, masked to fade out before it reaches the content. */
+@utility grid-lines {
+  background-image:
+    linear-gradient(to right, var(--line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: 4rem 4rem;
+  mask-image: radial-gradient(
+    ellipse 70% 60% at 50% 0%,
+    #000 0%,
+    transparent 72%
+  );
+}
+
+/** Stand-in cover for a post with no image: two soft light sources over a
+    hairline weave. Callers set --art-h, --art-h2, --art-x, --art-y, --art-angle. */
+@utility cover-art {
+  background-color: var(--bg-inset);
+  background-image:
+    radial-gradient(
+      68% 88% at var(--art-x) var(--art-y),
+      hsl(var(--art-h) 66% var(--art-l) / var(--art-o-a)),
+      transparent 64%
+    ),
+    radial-gradient(
+      58% 76% at calc(100% - var(--art-x)) calc(100% - var(--art-y)),
+      hsl(var(--art-h2) 58% var(--art-l) / var(--art-o-b)),
+      transparent 62%
+    ),
+    repeating-linear-gradient(
+      var(--art-angle),
+      transparent 0 11px,
+      hsl(var(--art-h) 45% 40% / var(--art-o-line)) 11px 12px
+    );
+}
+
+/** Hairline that fades at both ends — a softer section divider than a border. */
+@utility rule-fade {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--line-strong) 18%,
+    var(--line-strong) 82%,
+    transparent
+  );
+}
+
 body {
   background: var(--bg);
   color: var(--fg);
+  /* The landing hero's backdrop is `w-screen`, which counts the scrollbar and
+     so overhangs slightly. `clip` contains it without making the body a scroll
+     container — `hidden` would, and that breaks the sticky header. */
+  overflow-x: clip;
   font-family: var(--font-sans-stack, ui-sans-serif, system-ui, sans-serif);
   font-synthesis-weight: none;
   -webkit-font-smoothing: antialiased;

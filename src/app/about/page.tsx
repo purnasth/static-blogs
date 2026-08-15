@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import Hero, { IntroCard } from "@/components/Hero";
 // import { Badge, MetaRow, Panel } from "@/components/ui";
 import { getCurrentRoles, getTotalExperience } from "@/lib/experience";
 import { renderMarkdown } from "@/lib/markdown";
@@ -10,6 +11,7 @@ import {
   // selectedWork,
   // skills,
 } from "@/lib/profile";
+import { site } from "@/lib/site";
 
 export const metadata = {
   title: "About",
@@ -34,49 +36,29 @@ export default async function AboutPage() {
 
   return (
     <div>
-      <header className="border-b border-line pb-10">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={profile.avatar}
-            alt={`Portrait of ${profile.name}`}
-            width={1024}
-            height={1024}
-            className="size-24 shrink-0 border border-line object-cover shadow-sm sm:size-48"
-          />
-
-          <div className="min-w-0">
-            <h1 className="text-balance text-display font-semibold">
-              {profile.name}
-            </h1>
-
-            <p className="mt-4 text-pretty text-base text-muted">
-              {profile.tagline}
-            </p>
-            <ul className="mt-6 flex flex-wrap gap-x-5">
-              {links.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.href}
-                    target={
-                      link.href.startsWith("mailto:") ? undefined : "_blank"
-                    }
-                    rel="noreferrer"
-                    className="group inline-flex items-baseline gap-1.5 text-meta"
-                  >
-                    <span className="text-muted transition-colors group-hover:text-foreground">
-                      {link.label}
-                    </span>
-                    <span className="font-mono text-accent transition-colors group-hover:text-accent-hover">
-                      {link.handle}
-                    </span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </header>
+      <Hero eyebrow={site.title} lede={site.intro}>
+        <IntroCard>
+          <ul className="mt-2 flex flex-wrap gap-x-5 sm:mt-6">
+            {links.map((link) => (
+              <li key={link.label}>
+                <a
+                  href={link.href}
+                  target={link.href.startsWith("mailto:") ? undefined : "_blank"}
+                  rel="noreferrer"
+                  className="group inline-flex items-baseline gap-1.5 text-meta"
+                >
+                  <span className="text-muted transition-colors group-hover:text-foreground">
+                    {link.label}:
+                  </span>
+                  <span className="text-accent transition-colors group-hover:text-accent-hover">
+                    {link.handle}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </IntroCard>
+      </Hero>
 
       <div
         className="prose mt-10 max-w-none"
@@ -101,7 +83,10 @@ export default async function AboutPage() {
                 className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
               >
                 <p className="flex items-baseline gap-2 font-medium">
-                  <span aria-hidden className="size-[7px] shrink-0 rounded-full bg-accent" />
+                  <span
+                    aria-hidden
+                    className="size-[7px] shrink-0 rounded-full bg-accent"
+                  />
                   {role.title}
                   <span className="font-normal text-muted">at</span>
                   {role.href ? (
