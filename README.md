@@ -166,7 +166,9 @@ src/app/
 ## Before you deploy
 
 1. Edit `src/lib/site.ts` — title, description, author, and **`url`** (the real
-   domain; it's used for RSS, sitemap and social previews).
+   domain, no trailing slash; it's used for RSS, sitemap and social previews).
+   Keep `description` under 160 characters — search results and feed readers
+   both truncate around there.
 2. Replace `src/app/favicon.ico`.
 3. Edit `content/about.md`.
 

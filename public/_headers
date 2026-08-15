@@ -11,3 +11,9 @@
 
 /images/*
   Cache-Control: public, max-age=31536000, immutable
+
+# The route handler's own Content-Type is lost on static export — Cloudflare
+# types out/rss.xml by extension, which would serve it as plain application/xml.
+/rss.xml
+  Content-Type: application/rss+xml; charset=utf-8
+  Cache-Control: public, max-age=3600

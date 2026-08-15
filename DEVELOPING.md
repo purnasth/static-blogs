@@ -347,8 +347,11 @@ wrangler.jsonc            Cloudflare deploy: assets-only Worker serving out/
 
 ### Site name, description, nav, domain
 
-`src/lib/site.ts`. **Set `url` to your real domain before deploying** — RSS,
-sitemap and social preview links are built from it.
+`src/lib/site.ts`. `url` is the real domain — RSS, sitemap and social preview
+links are all built from it via `absoluteUrl()`, so it must be the absolute
+origin with no trailing slash. Keep `description` under 160 characters; it is
+the line both a search result and a feed reader's sidebar show, and both
+truncate past roughly that. `intro` is the long version, used on the home page.
 
 ### Colours and typography
 

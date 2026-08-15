@@ -18,10 +18,9 @@ export const site = {
   intro:
     "A personal corner of the internet where I write about technology, design and the small hops that quietly turn into a journey — in the hope that some of it proves useful to you too.",
   description:
-    "Pages by Purna is a blogs platform through which I share my thoughts, experiences, and insights on various topics. It serves as a personal space for me to express myself and connect with like-minded individuals. Be it technology, lifestyle, or any other subject that piques my interest, I aim to provide valuable content that informs, inspires, and sparks meaningful conversations. Join me on this journey as I explore the world through my words and share my unique perspective with you.",
+    "Thoughts, experiences and lessons worth writing down — Purna Shrestha on technology, design, and the small hops that turn into a journey.",
   author: "Purna Shrestha",
-  // Set this to your real domain before deploying; used for absolute URLs in RSS.
-  url: "https://example.com",
+  url: "https://blogs.purnashrestha.com.np",
   nav: [
     { href: "/", label: "Posts" },
     { href: "/tags/", label: "Tags" },
@@ -32,3 +31,11 @@ export const site = {
 
 /** The writing desk exists only under `next dev`, so its link must too. */
 export const navItems = site.nav.filter((item) => IS_DEV || !item.devOnly);
+
+/**
+ * Site-relative path -> absolute URL. RSS items, sitemap entries and feed
+ * enclosures must all be absolute, and all three should agree on the origin.
+ */
+export function absoluteUrl(path: string): string {
+  return `${site.url}${path.startsWith("/") ? path : `/${path}`}`;
+}
