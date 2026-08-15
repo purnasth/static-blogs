@@ -28,7 +28,7 @@ export const profile = {
   role: "Software Engineer",
   tagline:
     "Software engineer helping brands build globally through design and code; crafting digital experiences that are both beautiful and functional.",
-  avatar: "/images/purna-shrestha.png",
+  avatar: "/images/purna.svg",
   portfolio: "https://www.purnashrestha.com.np/",
   availableForWork: true,
 } as const;

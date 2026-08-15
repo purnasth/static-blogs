@@ -1,9 +1,13 @@
 import Link from "next/link";
+import { Fragment } from "react";
+import FeaturedPost from "@/components/FeaturedPost";
+import Hero from "@/components/Hero";
 import PostRow from "@/components/PostRow";
-import { MetaRow } from "@/components/ui";
 import { getAllTags, getPostSummaries } from "@/lib/posts";
 import { site } from "@/lib/site";
 import type { PostSummary } from "@/lib/types";
+
+const NAMED_TOPICS = 3;
 
 /** Newest first, so the year headings descend with the list. */
 function groupByYear(posts: PostSummary[]): [string, PostSummary[]][] {
@@ -15,6 +19,15 @@ function groupByYear(posts: PostSummary[]): [string, PostSummary[]][] {
   return [...years.entries()];
 }
 
+/** Adds up the per-post estimates already on each summary, e.g. "7 min read". */
+function totalReadingMinutes(posts: PostSummary[]): number {
+  return posts.reduce(
+    (minutes, post) =>
+      minutes + (Number(post.readingTime.match(/\d+/)?.[0]) || 0),
+    0,
+  );
+}
+
 export default function Home() {
   const posts = getPostSummaries();
   const tags = getAllTags();
@@ -22,62 +35,115 @@ export default function Home() {
   // always matches the number of rows actually on the page.
   const drafts = posts.filter((p) => p.draft).length;
 
+  const [latest, ...rest] = posts;
+  const since = posts.at(-1)?.date.slice(0, 4);
+  const minutes = totalReadingMinutes(posts);
+  const named = tags.slice(0, NAMED_TOPICS);
+  const unnamed = tags.length - named.length;
+
   return (
     <div>
-      <section className="border-b border-line pb-10">
-        <h1 className="text-balance text-display font-semibold">{site.title}</h1>
-        <p className="mt-4 max-w-xl text-pretty text-sm text-muted">{site.description}</p>
+      <Hero
+        eyebrow={
+          latest ? `Latest — ${latest.title}` : "A quiet corner, for now"
+        }
+        eyebrowHref={latest ? `/posts/${latest.slug}/` : undefined}
+        live={Boolean(latest)}
+        aurora
+        lede={site.intro}
+      >
+        {latest && <FeaturedPost post={latest} />}
+      </Hero>
 
-        {posts.length > 0 && (
-          <MetaRow
-            className="mt-6"
-            items={[
-              <span key="count" className="tabular-nums">
-                {posts.length} {posts.length === 1 ? "post" : "posts"}
-              </span>,
-              drafts > 0 && (
-                <span
-                  key="drafts"
-                  className="text-warn"
-                  title="Drafts are visible locally and excluded from the built site."
+      {named.length > 0 && (
+        <section className="mt-16 flex flex-col gap-x-8 gap-y-3 sm:flex-row">
+          <h2 className="eyebrow shrink-0 pt-1.5 sm:w-44">What I write about</h2>
+          <p className="max-w-xl text-pretty text-muted">
+            Mostly{" "}
+            {named.map(({ tag }, index) => (
+              <Fragment key={tag}>
+                {index > 0 && (index === named.length - 1 ? " and " : ", ")}
+                <Link
+                  href={`/tags/${encodeURIComponent(tag)}/`}
+                  className="text-foreground underline decoration-accent-line underline-offset-[0.18em] transition-colors hover:decoration-accent"
                 >
-                  {drafts} draft
-                </span>
-              ),
-              <Link key="tags" href="/tags/" className="transition-colors hover:text-accent">
-                {tags.length} {tags.length === 1 ? "tag" : "tags"}
-              </Link>,
-              <a key="rss" href="/rss.xml" className="transition-colors hover:text-accent">
-                RSS
-              </a>,
-            ]}
-          />
-        )}
-      </section>
+                  {tag}
+                </Link>
+              </Fragment>
+            ))}
+            {unnamed > 0 && (
+              <>
+                , with side trips into{" "}
+                <Link
+                  href="/tags/"
+                  className="text-foreground underline decoration-accent-line underline-offset-[0.18em] transition-colors hover:decoration-accent"
+                >
+                  {unnamed} more {unnamed === 1 ? "topic" : "topics"}
+                </Link>
+              </>
+            )}
+            .{" "}
+            {posts.length > 0 && (
+              <span className="text-subtle">
+                {posts.length} {posts.length === 1 ? "post" : "posts"}
+                {since && ` since ${since}`}
+                {minutes > 0 && `, about ${minutes} minutes of reading`}
+                {" — or take the "}
+                <a
+                  href="/rss.xml"
+                  className="underline decoration-accent-line underline-offset-[0.18em] transition-colors hover:decoration-accent"
+                >
+                  feed
+                </a>
+                .
+              </span>
+            )}
+          </p>
+        </section>
+      )}
 
-      {posts.length === 0 ? (
+      {posts.length === 0 && (
         <p className="py-16 text-muted">
-          No posts yet. Run <code className="font-mono text-sm">pnpm write</code> and open{" "}
-          <code className="font-mono text-sm">/admin</code> to write your first one.
+          No posts yet. Run <code className="font-mono text-sm">pnpm write</code>{" "}
+          and open <code className="font-mono text-sm">/admin</code> to write
+          your first one.
         </p>
-      ) : (
-        groupByYear(posts).map(([year, yearPosts]) => (
-          <section key={year}>
-            <h2
-              aria-hidden
-              className="veil meta sticky top-16 z-10 -mx-2 px-2 pb-1 pt-6 font-medium tabular-nums"
-            >
-              {year}
-            </h2>
-            <ul className="divide-y divide-line">
-              {yearPosts.map((post) => (
-                <li key={post.slug}>
-                  <PostRow post={post} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
+      )}
+
+      {rest.length > 0 && (
+        <>
+          <div className="mt-16 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-b border-line pb-3">
+            <h2 className="eyebrow">More posts</h2>
+            {drafts > 0 && (
+              <p
+                className="meta text-warn"
+                title="Drafts are visible locally and excluded from the built site."
+              >
+                {drafts} draft
+              </p>
+            )}
+          </div>
+
+          {groupByYear(rest).map(
+            ([year, yearPosts]) => (
+              <section key={year}>
+                <h3
+                  aria-hidden
+                  className="veil meta sticky top-16 z-10 -mx-2 px-2 pb-1 pt-6 font-medium tabular-nums"
+                >
+                  {year}
+                </h3>
+                <ul className="divide-y divide-line">
+                  {yearPosts.map((post) => (
+                    <li key={post.slug}>
+                      <PostRow post={post} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ),
+          )}
+        </>
       )}
     </div>
   );
