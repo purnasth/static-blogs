@@ -4,10 +4,68 @@ A personal blog that is **100% static in production** but has a **real writing
 interface** you run on your own machine. No CMS to log into, no database, no
 server to keep patched.
 
+<details>
+  <summary>Landing Page</summary>
+  <img
+    width="3418"
+    height="2142"
+    alt="25123"
+    src="https://github.com/user-attachments/assets/f0b0c37a-9efd-4a23-a244-f7ce80d71c90"
+  />
+</details>
+
+<details>
+  <summary>Blogs</summary>
+
+<img
+    width="3418"
+    height="2142"
+    alt="37526"
+    src="https://github.com/user-attachments/assets/21547dc9-a547-408a-84b4-d2eda1525ddc"
+  />
+
+<img
+    width="3418"
+    height="2142"
+    alt="1419"
+    src="https://github.com/user-attachments/assets/ab42e78e-ad41-4ba1-891f-abf834c634e7"
+  />
+
+</details>
+
+<details>
+  <summary>Admin</summary>
+  <img
+    width="3420"
+    height="2224"
+    alt="72342"
+    src="https://github.com/user-attachments/assets/94899291-0e1c-43bc-a9bb-fd68956e80ec"
+  />
+
+<img
+    width="3420"
+    height="2224"
+    alt="19995"
+    src="https://github.com/user-attachments/assets/d0487706-42c5-4f01-8a70-2d69d43bffe2"
+  />
+
+<img
+    width="3420"
+    height="2224"
+    alt="98005"
+    src="https://github.com/user-attachments/assets/c8969abd-b73e-432d-a3b4-a783f5e318bf"
+  />
+
+</details>
+
 ---
 
-**New here? Read [DEVELOPING.md](./DEVELOPING.md)** — running it, how it works,
-changing it, deploying it, and what to do when something breaks.
+**Never set this up before? Read [SETUP.md](./SETUP.md)** — installing Node,
+pnpm and Git from scratch, making a GitHub account, writing your first post and
+getting it online. Assumes no prior experience.
+
+**Already a developer? Read [DEVELOPING.md](./DEVELOPING.md)** — running it, how
+it works, changing it, deploying it, and what to do when something breaks.
 
 ---
 
@@ -28,22 +86,22 @@ next free port and prints the one it used — read the terminal.
 
 **Public — deployed:**
 
-| Route | Purpose |
-| --- | --- |
-| `/` | Home: every published post, newest first |
-| `/posts/<slug>/` | A single post |
-| `/tags/` | All tags, with counts |
-| `/tags/<tag>/` | Posts carrying one tag |
-| `/about/` | Renders `content/about.md` |
-| `/rss.xml` | Feed for readers |
-| `/sitemap.xml` | For search engines |
+| Route            | Purpose                                  |
+| ---------------- | ---------------------------------------- |
+| `/`              | Home: every published post, newest first |
+| `/posts/<slug>/` | A single post                            |
+| `/tags/`         | All tags, with counts                    |
+| `/tags/<tag>/`   | Posts carrying one tag                   |
+| `/about/`        | Renders `content/about.md`               |
+| `/rss.xml`       | Feed for readers                         |
+| `/sitemap.xml`   | For search engines                       |
 
 **Writing desk — local only, never deployed:**
 
-| Route | Purpose |
-| --- | --- |
-| `/admin/` | Post list + the Publish button |
-| `/admin/edit/new/` | Write a new post |
+| Route                 | Purpose                        |
+| --------------------- | ------------------------------ |
+| `/admin/`             | Post list + the Publish button |
+| `/admin/edit/new/`    | Write a new post               |
 | `/admin/edit/<slug>/` | Edit or delete an existing one |
 
 Full detail, including the API endpoints the editor uses, is in
@@ -58,10 +116,10 @@ post, naming the address you're at for each step. The short version:
 Open **http://localhost:3000/admin**.
 
 - **New post** → title, date, tags, summary, cover, draft toggle, markdown body.
-- **Drag an image** into the editor (or paste, or use the *image* button). It's
+- **Drag an image** into the editor (or paste, or use the _image_ button). It's
   saved to `public/images/` and the markdown is inserted at your cursor.
 - **⌘S / Ctrl+S** saves. The post is written to `content/posts/<slug>.md`.
-- **Preview** toggles a rendered view; *preview ↗* on the list opens the real page.
+- **Preview** toggles a rendered view; _preview ↗_ on the list opens the real page.
 - Posts marked **draft** are visible locally and excluded from the built site.
 
 When you're happy, go back to `/admin` and hit **Commit & push**. That commits
