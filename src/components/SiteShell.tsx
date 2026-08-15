@@ -29,16 +29,15 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
       </a>
 
       <header className="veil sticky top-0 z-40 border-b border-line">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 sm:flex-nowrap sm:px-8">
           <Link
             href="/"
-            className="text-ui font-semibold tracking-tight transition-colors hover:text-accent"
+            className="whitespace-nowrap text-ui font-semibold tracking-tight transition-colors hover:text-accent"
           >
             {site.title}
           </Link>
 
-          <div className="flex items-center gap-3">
-            <nav className="flex items-center gap-1">
+          <nav className="-ml-2.5 order-3 flex w-full items-center gap-1 sm:order-none sm:ml-auto sm:w-auto">
               {navItems.map((item) => {
                 const active = isActive(pathname, item.href);
                 return (
@@ -64,7 +63,9 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
                   </Link>
                 );
               })}
-            </nav>
+          </nav>
+
+          <div className="ml-auto shrink-0 sm:ml-0">
             <ThemeToggle />
           </div>
         </div>

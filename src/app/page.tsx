@@ -129,7 +129,7 @@ export default function Home() {
               <section key={year}>
                 <h3
                   aria-hidden
-                  className="veil meta sticky top-16 z-10 -mx-2 px-2 pb-1 pt-6 font-medium tabular-nums"
+                  className="veil meta sticky top-24 z-10 -mx-2 px-2 pb-1 pt-6 font-medium tabular-nums sm:top-16"
                 >
                   {year}
                 </h3>

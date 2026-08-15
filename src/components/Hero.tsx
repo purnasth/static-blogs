@@ -114,7 +114,7 @@ export function IntroCard({ children }: { children?: React.ReactNode }) {
             alt={`Portrait of ${profile.name}`}
             width={1024}
             height={1024}
-            className="pointer-events-none -z-10 h-48 w-full select-none object-contain object-bottom sm:h-52 sm:-translate-y-5 sm:scale-150 md:scale-200 xl:scale-[2]"
+            className="pointer-events-none -z-10 h-48 w-full select-none object-contain object-bottom sm:h-52 sm:-translate-y-5 sm:scale-125 lg:scale-[1.85] xl:scale-[2]"
           />
         </div>
       </div>
