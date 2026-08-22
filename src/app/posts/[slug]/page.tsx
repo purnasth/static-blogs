@@ -6,11 +6,13 @@ import ReactionBar, { StickyReactionBar } from "@/components/engagement/Reaction
 import ReactionSummary from "@/components/engagement/ReactionSummary";
 import ViewCount from "@/components/engagement/ViewCount";
 import ReadingProgress from "@/components/ReadingProgress";
+import ShareLinks from "@/components/ShareLinks";
 import TableOfContents from "@/components/TableOfContents";
 import TagChip from "@/components/TagChip";
 import { Badge, LinkList, LinkRow, MetaRow } from "@/components/ui";
 import { getEngagementSnapshot } from "@/lib/engagement-snapshot";
 import { formatDate } from "@/lib/format";
+import { absoluteUrl, site } from "@/lib/site";
 import { renderMarkdown } from "@/lib/markdown";
 import {
   getAdjacentPosts,
@@ -29,14 +31,21 @@ export async function generateMetadata({ params }: PageProps<"/posts/[slug]">) {
   const { slug } = await params;
   const post = getPost(slug);
   if (!post) return {};
+  const path = `/posts/${slug}/`;
+
   return {
     title: post.title,
     description: post.summary,
+    alternates: { canonical: path },
     openGraph: {
       title: post.title,
       description: post.summary,
       type: "article",
+      url: path,
+      siteName: site.title,
+      authors: [site.author],
       publishedTime: post.date,
+      tags: post.tags,
       images: post.cover ? [post.cover] : undefined,
     },
   };
@@ -109,6 +118,7 @@ export default async function PostPage({ params }: PageProps<"/posts/[slug]">) {
         </article>
 
         <ReactionBar />
+        <ShareLinks url={absoluteUrl(`/posts/${slug}/`)} title={post.title} />
         <StickyReactionBar />
 
         {(newer || older) && (

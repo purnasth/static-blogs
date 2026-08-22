@@ -55,7 +55,7 @@ export default function FeaturedPost({
             </p>
           )}
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-3 text-meta text-white/55">
+          <div className="mt-2 flex flex-wrap items-center gap-x-1 md:gap-x-3 gap-y-3 text-meta text-white/55">
             <time dateTime={post.date} className="font-italic text-micro">
               {formatDate(post.date)}
             </time>
@@ -68,7 +68,7 @@ export default function FeaturedPost({
 
             <span
               aria-hidden
-              className="ml-auto inline-flex items-center gap-2 text-white/80 text-xs rounded-full px-3 py-1 backdrop-blur-sm bg-white/10 hover:text-white hover:bg-white/20 transition-colors"
+              className="ml-auto hidden sm:inline-flex items-center gap-2 text-white/80 text-xs rounded-full px-3 py-1 backdrop-blur-sm bg-white/10 hover:text-white hover:bg-white/20 transition-colors"
             >
               Read
               <span className="">→</span>

@@ -995,3 +995,126 @@ which is the ordinary trade for a lead card.
 post; the card below leads on reactions and says so. Keeping them independent
 avoids the pill linking to one post while naming another, and the two are
 labelled clearly enough to read as different things.
+
+---
+
+## 15. Sharing
+
+A share row sits under the reaction bar on every post: X, LinkedIn, Facebook,
+Threads, WhatsApp, copy link, and — only where the platform offers one — the
+native share sheet.
+
+### Plain links, no SDKs
+
+Every network is an ordinary anchor to its intent URL. Dropping in the official
+widgets would mean a cross-origin script on every post, a tracking pixel for
+readers who never click, and a CSP exemption in `public/_headers` to let it
+load — for a button a 200-byte anchor already does. Each carries
+`rel="noopener noreferrer nofollow"`: the first two for the tab-hijack and
+referrer leak, `nofollow` because an intent URL is a share action, not an
+endorsement.
+
+The URL comes from the server via `absoluteUrl()`, not from
+`window.location`. So it is the canonical address even when the reader arrived
+with tracking parameters stapled on, and it is right on the first render rather
+than after hydration.
+
+**No link prefills the title.** Every one of these platforms unfurls the URL
+into a preview card built from the post's own `og:` tags, so putting the title
+in the text as well makes it appear twice — once as typed text, once in the card
+beneath. The metadata carries the title; the text box is left for whatever the
+sharer wants to say.
+
+Which parameter each one uses matters just as much, and they are not the same:
+
+| | Parameter | Where the link ends up |
+| --- | --- | --- |
+| X | `url` | composer text; the published post shows the card and hides the URL |
+| LinkedIn | `url` | card only — no text field exists |
+| Facebook | `u` | card only — no text field exists |
+| Threads | `url` | **card only.** `text` would also paste it into the body |
+| WhatsApp | `text` | the message body, unavoidably |
+
+Threads is the subtle one: it accepts **both** `text` and `url`, and `url` is
+documented as "the URL for an optional link attachment". Sending the link via
+`text` puts it in the composer *and* renders a card — visibly doubled. `url`
+attaches it as a card alone.
+
+WhatsApp is the honest exception. `wa.me` takes only `text`, because a chat
+message *is* text — the preview is generated from whatever URL it finds. Seeing
+the link in the message body there is how every WhatsApp link share looks, not
+a defect.
+
+The native share sheet still receives `{ title, url }`, which is not the same
+mistake: `title` there is document metadata, not message text — Android maps it
+to the subject field, which link-first apps ignore.
+
+**WhatsApp is in the list deliberately** — it is the dominant share channel for
+much of this blog's likely audience, and it costs one more link.
+
+### The brand icons come from react-icons, not lucide
+
+**Lucide has no brand icons.** It removed them at v1 over trademark concerns —
+none of its 1777 exports is a social mark, and there is no secondary entry point
+that has them. `<Linkedin />` from lucide does not exist. Don't go looking.
+
+So the five marks come from `react-icons/fa6`. Font Awesome 6 is the pack
+because it is the only one carrying all five in a single consistent design:
+**Simple Icons has dropped LinkedIn** entirely, and Ant Design's outline
+variants have no Threads.
+
+These are **solid**, unlike every other icon on the page. That is a deliberate
+accepted trade, not an oversight: brand guidelines specify solid marks, so no
+maintained set ships outline logos. Hand-drawn outline versions were tried and
+reverted in favour of real ones from a library.
+
+`react-icons` is a runtime dependency because this row ships to readers. It
+tree-shakes properly — verified by checking the built chunks for each icon's
+SVG path data: the five used marks are present, `FaInstagram` and `FaTiktok`
+are not. The cost is five paths, not the pack.
+
+### Instagram is not possible, and that is not an oversight
+
+Instagram has **no web share intent**. Four candidates, none of them a share
+composer:
+
+| Endpoint | What it actually returns |
+| --- | --- |
+| `/share?url=` | the profile page for a user named **share** |
+| `/intent/post?url=` | the profile page for a user named **intent** |
+| `/sharer.php?u=` | the generic app shell |
+| `/create/story/?url=` | the generic app shell |
+
+The reason is structural, not an oversight on their part: Instagram is
+media-first and links are not even clickable in captions, so there is nothing
+for a share URL to target. Story sharing exists but needs the mobile app and an
+image asset via the Facebook SDK, not a link.
+
+Threads, by contrast, does have one: `threads.net/intent/post?text=…` redirects
+to login carrying `next=`, and drops a logged-in user straight into the composer.
+
+The gap is covered by the **More** button. The native share sheet lists whatever
+the reader actually has installed — Instagram included — which is why it is
+worth keeping even though it duplicates some of the row.
+
+Copy link tries the async Clipboard API, falls back to `execCommand` (deprecated,
+but it needs neither a secure context nor a permission), and if both fail the
+button says **Press ⌘C** rather than looking broken.
+
+### What actually decides how a share looks
+
+The buttons are the easy half. What a link *renders as* on those platforms is
+decided entirely by the metadata in `generateMetadata`, and that is worth
+knowing about:
+
+| Tag | Set where | Note |
+| --- | --- | --- |
+| `og:image` | per post, from `cover` | Absolute only because `layout.tsx` sets `metadataBase` — a relative path here silently renders no card |
+| `twitter:card` | inferred | `summary_large_image` when the post has a cover, `summary` when it does not |
+| `og:url` | per post | |
+| `og:site_name` | per post | |
+| `canonical` | per post | |
+
+**A post with no `cover` gets the small card.** If you want every share to look
+the same, add a site-wide fallback image under `openGraph.images` in
+`layout.tsx`.
