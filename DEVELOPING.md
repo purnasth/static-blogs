@@ -113,8 +113,9 @@ sitemap.
 | `/admin/` | The hub. Lists every post (drafts included) with a link to edit each one, a **New post** button, and the **Publish** panel showing your git branch, whether a remote is configured, and how many changes are waiting. |
 | `/admin/edit/new/` | Blank editor. Creating a post. |
 | `/admin/edit/<slug>/` | The same editor loaded with an existing post, plus a **Delete** button. |
+| `/admin/stats/` | **Numbers** — real production engagement, charted. See §13. |
 
-### API endpoints — local only, never deployed
+### Writing API endpoints — local only, never deployed
 
 You never call these by hand; the editor does. Listed so you know what exists.
 
@@ -124,6 +125,18 @@ You never call these by hand; the editor does. Listed so you know what exists.
 | `DELETE /api/posts/<slug>/` | Deletes that post's file. |
 | `POST /api/images/` | Saves an uploaded image into `public/images/`, avoiding name collisions. |
 | `POST /api/publish/` | `git add -A`, commit, push. |
+| `GET /api/stats/` | Reads live production D1 by shelling out to Wrangler, for `/admin/stats/`. |
+
+### Engagement endpoints — the only ones that are deployed
+
+Served by `worker/index.ts`, not by Next. Called by the reaction bar on every
+post. No accounts; see §12 for how they stay honest without one.
+
+| Endpoint | Does |
+| --- | --- |
+| `POST /api/engagement/` | Records a view (once per visitor per post per day) and returns the current counts. |
+| `POST /api/react/` | Toggles one reaction on or off and returns the current counts. |
+| `GET /api/summary/` | Totals for every post, for the listing rows. Identical for every visitor, so unlike the other two it is cached at the edge. |
 
 ---
 
@@ -317,6 +330,9 @@ src/lib/
   format.ts               date formatting
   storage/index.ts        PostStore interface, getStore(), slugify()
   storage/local.ts        filesystem + git implementation
+  engagement.ts           reaction kinds + shapes, shared with the Worker
+  engagement-snapshot.ts  bakes counts into the HTML at build time
+  engagement.dev.ts       in-memory stand-in for the Worker under `next dev`
 src/app/
   layout.tsx              header, footer, fonts, site metadata
   globals.css             theme colours + article typography
@@ -332,13 +348,27 @@ src/app/
   admin/page.dev.tsx      post list + publish     │ dev only
   admin/edit/[slug]/…     editor                  │
   api/**/*.dev.ts         save / delete / upload / publish ┘
+src/components/engagement/
+  EngagementProvider.tsx  owns the one request a post makes; the rest subscribe
+  ReactionBar.tsx         the bar at the end, and the floating one
+  ReactionSummary.tsx     icons + total in the post header, links to the bar
+  PostStats.tsx           views + reactions on every listing row
+  ViewCount.tsx           views beside the date in the post header
+  RollingCount.tsx        a number that slides when it changes
+  summaryStore.ts         one /api/summary fetch shared by a whole listing
+  icons.tsx               kind -> lucide icon, and the shared glyph row
 src/components/admin/
   PostList.tsx            post list + publish panel (client)
   PostEditor.tsx          the editor (client)
+  StatsDashboard.tsx      the Numbers dashboard (client)
+  charts.tsx              chart primitives + the validated series palette
+worker/
+  index.ts                the /api/* engagement Worker — §12
+  schema.sql              its D1 tables
 
 tsconfig.json             editor + dev server
 tsconfig.build.json       production build only (ignores .next/dev)
-wrangler.jsonc            Cloudflare deploy: assets-only Worker serving out/
+wrangler.jsonc            Cloudflare deploy: static assets + the /api/* Worker
 ```
 
 ---
@@ -384,9 +414,12 @@ Create `src/app/uses/page.tsx` and add `{ href: "/uses/", label: "Uses" }` to
 
 ### Comments
 
-Static sites can't store comments, but [Giscus](https://giscus.app) backs them
-with GitHub Discussions and is a single client component. Add it at the bottom
-of `src/app/posts/[slug]/page.tsx`. Note you'd need to allow its domain in
+Views and reactions get away without accounts because they're anonymous by
+nature (§12); comments don't — an open text field with no identity behind it is
+a spam magnet, and moderating it becomes your new hobby.
+[Giscus](https://giscus.app) backs comments with GitHub Discussions and is a
+single client component. Add it at the bottom of
+`src/app/posts/[slug]/page.tsx`. Note you'd need to allow its domain in
 `public/_headers` CSP.
 
 ### Search
@@ -424,9 +457,10 @@ subsequent deploy.
 
 ### `wrangler.jsonc` — why it must stay committed
 
-The site deploys as an **assets-only Worker**: `wrangler.jsonc` has no `main`
-script, just `assets.directory: "./out"`. Cloudflare serves those files from its
-edge and never runs any code of ours.
+The site deploys as **static assets plus one small Worker**: `assets.directory`
+points Cloudflare at `out/`, and `main` points it at `worker/index.ts`, which
+`run_worker_first` confines to `/api/*` (§12). Every page is still served
+straight from the edge without running any code of ours.
 
 That file is not optional. `wrangler deploy` runs framework auto-detection when
 it finds no wrangler config, and its guess for a Next.js repo is a
@@ -463,8 +497,10 @@ and push, so RSS and sitemap use the real address.
 ### What Cloudflare actually does
 
 Clones the repo → `pnpm install --frozen-lockfile` → `pnpm build` →
-`npx wrangler deploy` uploads `out/` → serves it from the edge network. No Node
-process runs in production. `public/_headers` is applied automatically.
+`npx wrangler deploy` uploads `out/` and bundles `worker/index.ts` → serves both
+from the edge network. No Node process runs in production, and no page is
+rendered at request time. `public/_headers` is applied automatically to the
+static files; the Worker sets its own headers on `/api/*`.
 
 ---
 
@@ -567,3 +603,518 @@ strikethrough, fenced code blocks with highlighting, footnotes.
 
 The editor writes all of this for you — this table is for when you'd rather
 edit a file by hand, which is always allowed.
+
+---
+
+## 12. Views and reactions
+
+Every post carries a view count and four reaction buttons. There are no
+accounts, no cookie banner, and the site is still a static export — the pages in
+`out/` are the same prebuilt HTML they always were.
+
+### What actually changed
+
+`wrangler.jsonc` now has a `main` script as well as its assets. The
+`run_worker_first: ["/api/*"]` rule is what keeps this honest: only those two
+paths reach `worker/index.ts`. Every page, image and script is still answered by
+Cloudflare's asset worker without running any code of ours.
+
+```
+POST /api/engagement/   { slug, visitor } → { views, reactions, mine }
+POST /api/react/        { slug, visitor, kind } → { views, reactions, mine }
+```
+
+One request on page load, one per button press. Both go to D1.
+
+### Two identities, neither of them a login
+
+| | What it is | What it's for |
+|---|---|---|
+| **daily hash** | salted SHA-256 of IP + user-agent, re-salted every UTC midnight | view dedupe, rate limiting |
+| **visitor id** | random uuid the browser mints and keeps in `localStorage` | remembering *your* reactions across reloads |
+
+The daily hash is computed server-side and never leaves the Worker. No IP is
+written to the database, and because the salt rotates, yesterday's rows cannot
+be matched against today's visitors — which is also why they're safe to delete.
+
+The visitor id is forgeable and meant to be. It buys continuity, not trust.
+
+### Why spam doesn't pay
+
+Four layers, in the order a request meets them:
+
+1. **Same-origin only.** A missing or foreign `Origin`/`Sec-Fetch-Site` is
+   rejected outright. Stops drive-by scripts for free.
+2. **Reactions are toggles, not counters.** The primary key is
+   `(slug, visitor, kind)`, so clicking a heart 500 times rewrites one row 500
+   times and the count stays at 1. There is nothing to gain by hammering it.
+3. **Views dedupe per day.** `INSERT OR IGNORE` against the daily hash — your
+   second read of a post today doesn't count twice.
+4. **Per-IP daily budgets.** 400 page pings and 80 reaction writes per IP per
+   day. A person reading the whole site never comes close; a script hits it in
+   seconds. Minting fresh uuids doesn't help, because the budget is keyed on the
+   daily hash, not on the id the browser sent.
+
+**What this does not stop:** someone determined, with a script and rotating IPs,
+can still inflate a number. Without accounts that is unavoidable. The goal is
+numbers that are directionally honest and cheap to correct, not tamper-proof
+ones — and if a post ever looks wrong, it's one `DELETE` away from fixed.
+
+### First-time setup
+
+```bash
+npx wrangler d1 create blog-engagement
+```
+
+Put the printed `database_id` into `wrangler.jsonc`, then create the tables and
+the salt:
+
+```bash
+npx wrangler d1 execute blog-engagement --remote --file worker/schema.sql
+npx wrangler secret put VISITOR_SALT      # paste any long random string
+```
+
+`VISITOR_SALT` is what makes the daily hashes unguessable. Without it the Worker
+still runs, but someone who knows a reader's IP could confirm they visited — set
+it.
+
+Deploy as usual. The nightly cron in `wrangler.jsonc` sweeps the expired dedupe
+and rate-limit rows at 04:00 UTC.
+
+### What it costs
+
+Nothing, on Cloudflare's free plan, by a wide margin.
+
+| | Free allowance | What this blog spends |
+| --- | --- | --- |
+| Worker requests | 100,000 / day | ~1 per pageview. Static pages, images and scripts are served as **assets**, which are free and unlimited and never touch this budget. |
+| D1 rows written | 100,000 / day | ~3 per unique pageview (rate-limit tick, dedupe row, total bump). |
+| D1 rows read | 5,000,000 / day | ~10 per request, and only via indexed lookups. |
+| D1 storage | 5 GB | Kilobytes. The two expiring tables are swept nightly. |
+
+The binding constraint is **D1 writes**: roughly **30,000 pageviews a day**
+before the free tier runs out, and it is the rate-limit tick that dominates. If
+this blog ever gets near that, the fix is to stop writing that row on every ping
+— but that is a problem worth having.
+
+Free-tier limits are daily and hard: past them D1 rejects queries until the
+window resets. The site itself keeps serving — the pages are static and the
+reaction bar simply stops updating.
+
+### Looking at the data in DBeaver
+
+D1 is SQLite, so DBeaver reads it with the plain **SQLite** driver — but there
+is no host or port to connect to. D1 speaks HTTP, not the SQLite wire protocol,
+so what you open is always a *file*. There are two, and they are different
+things.
+
+**The local dev database** — live, and the one to poke at while building. It is
+a real SQLite file that `wrangler dev` writes to as you click around:
+
+```bash
+find .wrangler -path '*d1*' -name '*.sqlite' -not -name 'metadata.sqlite'
+```
+
+Open that path in DBeaver → New Connection → SQLite → set it as the database
+file. Edits you make there are real and take effect immediately.
+
+Miniflare names that file after the `database_id`, so **changing the id in
+`wrangler.jsonc` hands you a brand-new empty database** — and a DBeaver
+connection still pointed at the old file. The symptom is the Worker returning
+`no such table: rate_limit`. Re-run the `find`, repoint DBeaver, and reapply the
+schema:
+
+```bash
+npx wrangler d1 execute blog-engagement --local --file worker/schema.sql
+```
+
+**Production** — a snapshot. Pull one with:
+
+```bash
+pnpm db:pull      # → .local/engagement.db
+```
+
+That exports the remote database and rebuilds it as a SQLite file DBeaver can
+open the same way. `.local/` is gitignored; it holds real visitor rows.
+
+> **The snapshot is a copy, not a connection.** Editing it in DBeaver changes
+> nothing in production, and re-running `pnpm db:pull` overwrites your edits.
+> To change live data, go through Wrangler:
+>
+> ```bash
+> npx wrangler d1 execute blog-engagement --remote \
+>   --command "DELETE FROM reactions WHERE slug = 'some-post'"
+> ```
+
+If you would rather not leave the terminal at all, the Cloudflare dashboard has
+a query console at **Workers & Pages → D1 → blog-engagement → Console**.
+
+### What you'll find in there
+
+| Table | Holds |
+| --- | --- |
+| `post_views` | One row per post: the running total. |
+| `reactions` | One row per (post, visitor, kind). `visitor` is the browser-held uuid. |
+| `post_view_visitors` | Today's dedupe. `visitor` is the **daily hash** — 32 hex characters, not an IP and not reversible. |
+| `rate_limit` | Today's per-IP write budgets, keyed on the same daily hash. |
+
+The bottom two tables are the privacy story made concrete: pull a snapshot and
+the only trace of any reader is a hash that stops meaning anything at midnight.
+
+### Optional: counts in the static HTML
+
+Left alone, a post ships with an empty bar that fills in once the browser has
+called the API — a small flicker on every page. Set these three variables in the
+Cloudflare build settings and `next build` reads the totals straight from D1 and
+bakes them into the markup instead:
+
+```
+CF_ACCOUNT_ID, CF_D1_DATABASE_ID, CF_API_TOKEN   # token scoped to D1 read
+```
+
+It is purely cosmetic, and `engagement-snapshot.ts` treats it that way: unset
+variables, a network failure or a bad token all log a warning and produce an
+empty snapshot. None of them can fail a deploy, and nothing but the flicker
+changes.
+
+> An earlier version used this to order the home page's featured card too, and
+> that was a mistake — not the feature, the *assumption*. Insisting the answer
+> be known before the page was served forced a build-time D1 read, which meant
+> an API token and three build variables to reorder one card. The card now sorts
+> on the client from the summary the listings already fetch, and needs none of
+> it. See §14.
+
+### Counts on the listing rows
+
+Listings are a different problem from a post page: twenty rows must not mean
+twenty requests, and `PostRow` appears on the home page, every tag page and the
+404, so threading a provider through all of them would be easy to forget.
+
+`summaryStore.ts` solves both. It is a module-level store read through
+`useSyncExternalStore` — the first row to mount starts one `GET /api/summary`,
+every other row joins it, and a page that wires up nothing still works. If the
+request fails the rows simply render without counts.
+
+That endpoint is a GET, carries no `mine`, and records no view, which is what
+makes it cacheable: `cache-control: public, max-age=60` plus an explicit
+`caches.default` put, so a busy home page costs about one D1 read a minute
+rather than one per visitor. Nothing a reader acts on is served from it — the
+post page always fetches its own live numbers.
+
+### Working on it locally
+
+`next dev` runs no Worker, so `src/lib/engagement.dev.ts` stands in with an
+in-memory store behind `api/engagement/`, `api/react/` and `api/summary/`
+`route.dev.ts` files
+— the same `.dev.ts` trick the writing desk uses (§4), so none of it exists in
+the production build. Counts reset when the dev server restarts, and views are
+*not* deduped there so a reload visibly ticks up.
+
+To exercise the real Worker and a local database:
+
+```bash
+pnpm build && npx wrangler dev
+```
+
+**Use `http://localhost:<port>`, not `http://127.0.0.1:<port>`.** Next's dev
+server treats the two as different origins and blocks its own JS chunks on the
+mismatch, so the page renders as server HTML with no client behaviour at all —
+no counts, no reactions, no theme toggle. It looks exactly like a broken
+feature, and the only clue is a `Blocked cross-origin request` line in
+`.next/dev/logs/next-development.log`.
+
+### Changing the reactions
+
+`REACTIONS` in `src/lib/engagement.ts` is the single source of truth for the
+kinds and their labels. Icons live separately, in `icons.ts` — `engagement.ts`
+is also bundled into the Worker, and naming a React component in it would drag
+the renderer into an edge script.
+
+The current set, chosen so no two overlap:
+
+| kind | icon (lucide) | label | covers |
+| --- | --- | --- | --- |
+| `love` | `Heart` | Loved it | affection for the piece |
+| `celebrate` | `PartyPopper` | Nice work | praise for the author |
+| `insight` | `Lightbulb` | Learned something | it taught you something |
+| `inspire` | `Rocket` | Inspiring | it made you want to act |
+
+Icons come from **lucide-react**. It was picked over `react-icons` because the
+hand-drawn icons already in `ThemeToggle.tsx` use Lucide's exact convention —
+`fill="none" stroke="currentColor" strokeWidth="1.5"`, round caps — so they sit
+together without a seam. Lucide has no clapping-hands icon, which is why
+applause is a party popper.
+
+**Fill means "you did this."** In the bar, all four icons fill when held, via
+`fill="currentColor"` on the Lucide stroke path; everywhere else they stay
+outlined. That rule is why the header summary is outlined even though it shows
+the same icons — nothing in that row is yours, so nothing should look claimed.
+
+An earlier version filled only the heart, on the assumption that solid would
+turn the busier glyphs into blobs. Rendering them showed otherwise, and a set
+where one icon changes shape and three don't reads as a bug rather than a
+choice.
+
+Adding a reaction needs no migration; `kind` is just a string column. Renaming
+or removing one orphans its rows — harmless, since `isReactionKind` filters
+unknown kinds out of every response, but they still occupy space:
+
+```bash
+npx wrangler d1 execute blog-engagement --remote \
+  --command "DELETE FROM reactions WHERE kind NOT IN ('love','celebrate','insight','inspire')"
+```
+
+### The rest of the UI
+
+- **The header summary** (`ReactionSummary`) shows an outlined icon per kind
+  that has reactions, then the total, and links down to `#reactions`. Only kinds
+  with a count appear, so the row says something specific instead of showing
+  four constant glyphs. Outlined keeps it level with the eye in `ViewCount` and
+  with the rest of the metadata line — see the fill rule above. The icons are
+  also not overlapped the way a feed stacks avatars: those work overlapped
+  because they are multi-coloured photos, whereas glyphs in one colour smear.
+- **Views in the header** sit beside the date via `ViewCount`, which carries its
+  own separator rather than being passed to `MetaRow` — MetaRow drops falsy
+  *items*, and `<ViewCount />` is a truthy element even on the render where it
+  returns null, so inside MetaRow it would leave a dot hanging off the line.
+- **The floating bar** appears past `STICKY_REACTIONS_AT` (60%) and hides again
+  whenever the real bar is on screen, watched with an IntersectionObserver on
+  `#reactions`. Reactions parked at the very bottom only reach people who finish.
+- **Motion** is two keyframes at the end of `globals.css`, `reaction-pop` and
+  `count-roll`. Both are cancelled by the existing `prefers-reduced-motion`
+  block — its `!important` longhands beat the shorthands regardless of order.
+
+---
+
+## 13. The numbers dashboard
+
+`/admin/stats/` charts real production engagement. Like the rest of the writing
+desk it exists only under `next dev` and is absent from the built site.
+
+### Where the data comes from
+
+`GET /api/stats/` shells out to Wrangler:
+
+```
+wrangler d1 execute blog-engagement --remote --json --command "<one UNION>"
+```
+
+That borrows the login you already have, so it needs **no API token** — the same
+trick as `pnpm db:pull`, and the reason there is no production counterpart to
+this route. It is one invocation rather than two because spawning wrangler costs
+a couple of seconds; views and the reaction breakdown come back as one UNION.
+
+If the panel reports an error, the cause is almost always `wrangler whoami`
+being logged out, or `database_id` still being a placeholder.
+
+### What it shows
+
+| View | Question it answers | Form |
+| --- | --- | --- |
+| KPI row | What are the headline numbers? | Stat tiles — four numbers do not need a chart |
+| Reach vs. resonance | Which posts earned a response rather than just a visit? | Quadrant scatter |
+| Reaction fingerprint | Which *kind* of response did each post draw? | Heatmap grid |
+| Every number | — | Table |
+
+**Reach vs. resonance is the chart.** x is how many people arrived, y is what
+share of them cared enough to press something, and the dashed crosshair sits at
+this blog's own averages — so the quadrants read relative to your writing, not
+to an outside benchmark. The corner worth acting on is top-left, *Hidden gems*:
+posts almost nobody found, that the people who did responded to.
+
+It is deliberately one plot rather than two bar charts. Reach and resonance are
+different scales, so they could never share an axis — and the point is the
+*relationship* between them, which is a position, not two lengths.
+
+Resonance is not a percentage: one reader can leave all four reactions, so it
+legitimately exceeds 100.
+
+The fingerprint is a grid rather than a stacked bar because a stack answers
+"how many altogether" and makes individual kinds hard to compare — each segment
+starts at a different offset. A grid puts every post's "Learned something" in
+one column, so a post's shape reads down a column and across a row at once.
+
+There is no views-over-time chart because there is no view history to draw it
+from: `post_views` keeps a running total and `post_view_visitors` is pruned
+nightly. Adding one would mean a `post_views_daily` table and an extra write per
+counted view.
+
+### Colour: one hue, not four
+
+An earlier version gave each reaction kind its own categorical hue. That is the
+wrong job for this data, and it also failed its checks — the site's tokens are
+built for one accent at a time (`--lift: 42%` mixes toward white for dark mode),
+and four hues treated that way collapse toward grey at ΔE 8.8 for *normal*
+vision.
+
+Identity here comes from **position** — a labelled column, a labelled point —
+which leaves colour free to encode magnitude. So both charts use the site's own
+accent as a single sequential ramp. A one-hue ramp cannot fail a
+colour-blindness check the way four competing hues can, and the charts inherit
+the theme instead of fighting it.
+
+### Why no chart library
+
+The scatter is hand-written SVG and the heatmap is a table with a computed
+`color-mix` background — together about 200 lines with no dependency, and both
+read the theme's CSS custom properties directly, so light/dark needs no second
+palette. A library would have been more code to configure than this was to
+write. If the dashboard ever grows a real time series with zooming and
+brushing, revisit that.
+
+---
+
+## 14. The featured card
+
+`FeaturedSlot` picks the most-reacted post, falling back to the newest. It
+reads the same `/api/summary` the listing rows already fetch, so it costs no
+extra request.
+
+Server render and first client render both see an empty summary, so both
+produce the newest post — no hydration mismatch, and "newest" is the fallback
+for free rather than a special case.
+
+### What it trades
+
+On a **first** visit the card can change once, a moment after load. There is no
+layout shift — `FeaturedPost` has a fixed min-height — but the cover image
+swaps, which costs one extra image download and makes the measured LCP describe
+an image the reader no longer sees. On repeat visits the summary is already
+cached and the card is right immediately.
+
+### Two things that had to move with it
+
+**The list shows every post.** It used to be `posts` minus the newest, on the
+assumption the newest was always the card. Once the card is chosen on the
+client that no longer holds, and whichever post the card dropped would have
+vanished from the page entirely — not featured, not listed. So the list is now
+all posts and the heading is "All posts". The featured post appears twice,
+which is the ordinary trade for a lead card.
+
+**The pill still means "newest".** It is server-rendered and names the newest
+post; the card below leads on reactions and says so. Keeping them independent
+avoids the pill linking to one post while naming another, and the two are
+labelled clearly enough to read as different things.
+
+---
+
+## 15. Sharing
+
+A share row sits under the reaction bar on every post: X, LinkedIn, Facebook,
+Threads, WhatsApp, copy link, and — only where the platform offers one — the
+native share sheet.
+
+### Plain links, no SDKs
+
+Every network is an ordinary anchor to its intent URL. Dropping in the official
+widgets would mean a cross-origin script on every post, a tracking pixel for
+readers who never click, and a CSP exemption in `public/_headers` to let it
+load — for a button a 200-byte anchor already does. Each carries
+`rel="noopener noreferrer nofollow"`: the first two for the tab-hijack and
+referrer leak, `nofollow` because an intent URL is a share action, not an
+endorsement.
+
+The URL comes from the server via `absoluteUrl()`, not from
+`window.location`. So it is the canonical address even when the reader arrived
+with tracking parameters stapled on, and it is right on the first render rather
+than after hydration.
+
+**No link prefills the title.** Every one of these platforms unfurls the URL
+into a preview card built from the post's own `og:` tags, so putting the title
+in the text as well makes it appear twice — once as typed text, once in the card
+beneath. The metadata carries the title; the text box is left for whatever the
+sharer wants to say.
+
+Which parameter each one uses matters just as much, and they are not the same:
+
+| | Parameter | Where the link ends up |
+| --- | --- | --- |
+| X | `url` | composer text; the published post shows the card and hides the URL |
+| LinkedIn | `url` | card only — no text field exists |
+| Facebook | `u` | card only — no text field exists |
+| Threads | `url` | **card only.** `text` would also paste it into the body |
+| WhatsApp | `text` | the message body, unavoidably |
+
+Threads is the subtle one: it accepts **both** `text` and `url`, and `url` is
+documented as "the URL for an optional link attachment". Sending the link via
+`text` puts it in the composer *and* renders a card — visibly doubled. `url`
+attaches it as a card alone.
+
+WhatsApp is the honest exception. `wa.me` takes only `text`, because a chat
+message *is* text — the preview is generated from whatever URL it finds. Seeing
+the link in the message body there is how every WhatsApp link share looks, not
+a defect.
+
+The native share sheet still receives `{ title, url }`, which is not the same
+mistake: `title` there is document metadata, not message text — Android maps it
+to the subject field, which link-first apps ignore.
+
+**WhatsApp is in the list deliberately** — it is the dominant share channel for
+much of this blog's likely audience, and it costs one more link.
+
+### The brand icons come from react-icons, not lucide
+
+**Lucide has no brand icons.** It removed them at v1 over trademark concerns —
+none of its 1777 exports is a social mark, and there is no secondary entry point
+that has them. `<Linkedin />` from lucide does not exist. Don't go looking.
+
+So the five marks come from `react-icons/fa6`. Font Awesome 6 is the pack
+because it is the only one carrying all five in a single consistent design:
+**Simple Icons has dropped LinkedIn** entirely, and Ant Design's outline
+variants have no Threads.
+
+These are **solid**, unlike every other icon on the page. That is a deliberate
+accepted trade, not an oversight: brand guidelines specify solid marks, so no
+maintained set ships outline logos. Hand-drawn outline versions were tried and
+reverted in favour of real ones from a library.
+
+`react-icons` is a runtime dependency because this row ships to readers. It
+tree-shakes properly — verified by checking the built chunks for each icon's
+SVG path data: the five used marks are present, `FaInstagram` and `FaTiktok`
+are not. The cost is five paths, not the pack.
+
+### Instagram is not possible, and that is not an oversight
+
+Instagram has **no web share intent**. Four candidates, none of them a share
+composer:
+
+| Endpoint | What it actually returns |
+| --- | --- |
+| `/share?url=` | the profile page for a user named **share** |
+| `/intent/post?url=` | the profile page for a user named **intent** |
+| `/sharer.php?u=` | the generic app shell |
+| `/create/story/?url=` | the generic app shell |
+
+The reason is structural, not an oversight on their part: Instagram is
+media-first and links are not even clickable in captions, so there is nothing
+for a share URL to target. Story sharing exists but needs the mobile app and an
+image asset via the Facebook SDK, not a link.
+
+Threads, by contrast, does have one: `threads.net/intent/post?text=…` redirects
+to login carrying `next=`, and drops a logged-in user straight into the composer.
+
+The gap is covered by the **More** button. The native share sheet lists whatever
+the reader actually has installed — Instagram included — which is why it is
+worth keeping even though it duplicates some of the row.
+
+Copy link tries the async Clipboard API, falls back to `execCommand` (deprecated,
+but it needs neither a secure context nor a permission), and if both fail the
+button says **Press ⌘C** rather than looking broken.
+
+### What actually decides how a share looks
+
+The buttons are the easy half. What a link *renders as* on those platforms is
+decided entirely by the metadata in `generateMetadata`, and that is worth
+knowing about:
+
+| Tag | Set where | Note |
+| --- | --- | --- |
+| `og:image` | per post, from `cover` | Absolute only because `layout.tsx` sets `metadataBase` — a relative path here silently renders no card |
+| `twitter:card` | inferred | `summary_large_image` when the post has a cover, `summary` when it does not |
+| `og:url` | per post | |
+| `og:site_name` | per post | |
+| `canonical` | per post | |
+
+**A post with no `cover` gets the small card.** If you want every share to look
+the same, add a site-wide fallback image under `openGraph.images` in
+`layout.tsx`.
