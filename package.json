@@ -18,7 +18,8 @@
     "write": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:pull": "if grep -q REPLACE_WITH_D1_DATABASE_ID wrangler.jsonc; then echo \"No database yet. Run: npx wrangler d1 create blog-engagement, then put the printed id in wrangler.jsonc (DEVELOPING.md 12).\"; exit 1; fi; mkdir -p .local && wrangler d1 export blog-engagement --remote --output .local/engagement.sql && rm -f .local/engagement.db && sqlite3 .local/engagement.db < .local/engagement.sql && echo \"Snapshot ready: .local/engagement.db - open it in DBeaver with the SQLite driver.\""
   },
   "dependencies": {
     "gray-matter": "^4.0.3",

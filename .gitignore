@@ -43,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# D1 snapshots pulled for DBeaver (`pnpm db:pull`) — real visitor data
+.local

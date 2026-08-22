@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackLink from "@/components/BackLink";
+import PostEngagement from "@/components/PostEngagement";
 import ReadingProgress from "@/components/ReadingProgress";
 import TableOfContents from "@/components/TableOfContents";
 import TagChip from "@/components/TagChip";
 import { Badge, LinkList, LinkRow, MetaRow } from "@/components/ui";
+import { getEngagementSnapshot } from "@/lib/engagement-snapshot";
 import { formatDate } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown";
 import {
@@ -45,6 +47,7 @@ export default async function PostPage({ params }: PageProps<"/posts/[slug]">) {
   const { html, headings } = await renderMarkdown(post.body);
   const { newer, older } = getAdjacentPosts(slug);
   const related = getRelatedPosts(slug, post.tags);
+  const engagement = await getEngagementSnapshot(slug);
 
   return (
     <div className="relative">
@@ -94,6 +97,8 @@ export default async function PostPage({ params }: PageProps<"/posts/[slug]">) {
 
         <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: html }} />
       </article>
+
+      <PostEngagement slug={slug} initial={engagement} />
 
       {(newer || older) && (
         <nav

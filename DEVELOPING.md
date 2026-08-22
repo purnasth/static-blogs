@@ -114,7 +114,7 @@ sitemap.
 | `/admin/edit/new/` | Blank editor. Creating a post. |
 | `/admin/edit/<slug>/` | The same editor loaded with an existing post, plus a **Delete** button. |
 
-### API endpoints — local only, never deployed
+### Writing API endpoints — local only, never deployed
 
 You never call these by hand; the editor does. Listed so you know what exists.
 
@@ -124,6 +124,16 @@ You never call these by hand; the editor does. Listed so you know what exists.
 | `DELETE /api/posts/<slug>/` | Deletes that post's file. |
 | `POST /api/images/` | Saves an uploaded image into `public/images/`, avoiding name collisions. |
 | `POST /api/publish/` | `git add -A`, commit, push. |
+
+### Engagement endpoints — the only ones that are deployed
+
+Served by `worker/index.ts`, not by Next. Called by the reaction bar on every
+post. No accounts; see §12 for how they stay honest without one.
+
+| Endpoint | Does |
+| --- | --- |
+| `POST /api/engagement/` | Records a view (once per visitor per post per day) and returns the current counts. |
+| `POST /api/react/` | Toggles one reaction on or off and returns the current counts. |
 
 ---
 
@@ -317,6 +327,9 @@ src/lib/
   format.ts               date formatting
   storage/index.ts        PostStore interface, getStore(), slugify()
   storage/local.ts        filesystem + git implementation
+  engagement.ts           reaction kinds + shapes, shared with the Worker
+  engagement-snapshot.ts  bakes counts into the HTML at build time
+  engagement.dev.ts       in-memory stand-in for the Worker under `next dev`
 src/app/
   layout.tsx              header, footer, fonts, site metadata
   globals.css             theme colours + article typography
@@ -332,13 +345,18 @@ src/app/
   admin/page.dev.tsx      post list + publish     │ dev only
   admin/edit/[slug]/…     editor                  │
   api/**/*.dev.ts         save / delete / upload / publish ┘
+src/components/
+  PostEngagement.tsx      views + reaction bar (client)
 src/components/admin/
   PostList.tsx            post list + publish panel (client)
   PostEditor.tsx          the editor (client)
+worker/
+  index.ts                the /api/* engagement Worker — §12
+  schema.sql              its D1 tables
 
 tsconfig.json             editor + dev server
 tsconfig.build.json       production build only (ignores .next/dev)
-wrangler.jsonc            Cloudflare deploy: assets-only Worker serving out/
+wrangler.jsonc            Cloudflare deploy: static assets + the /api/* Worker
 ```
 
 ---
@@ -384,9 +402,12 @@ Create `src/app/uses/page.tsx` and add `{ href: "/uses/", label: "Uses" }` to
 
 ### Comments
 
-Static sites can't store comments, but [Giscus](https://giscus.app) backs them
-with GitHub Discussions and is a single client component. Add it at the bottom
-of `src/app/posts/[slug]/page.tsx`. Note you'd need to allow its domain in
+Views and reactions get away without accounts because they're anonymous by
+nature (§12); comments don't — an open text field with no identity behind it is
+a spam magnet, and moderating it becomes your new hobby.
+[Giscus](https://giscus.app) backs comments with GitHub Discussions and is a
+single client component. Add it at the bottom of
+`src/app/posts/[slug]/page.tsx`. Note you'd need to allow its domain in
 `public/_headers` CSP.
 
 ### Search
@@ -424,9 +445,10 @@ subsequent deploy.
 
 ### `wrangler.jsonc` — why it must stay committed
 
-The site deploys as an **assets-only Worker**: `wrangler.jsonc` has no `main`
-script, just `assets.directory: "./out"`. Cloudflare serves those files from its
-edge and never runs any code of ours.
+The site deploys as **static assets plus one small Worker**: `assets.directory`
+points Cloudflare at `out/`, and `main` points it at `worker/index.ts`, which
+`run_worker_first` confines to `/api/*` (§12). Every page is still served
+straight from the edge without running any code of ours.
 
 That file is not optional. `wrangler deploy` runs framework auto-detection when
 it finds no wrangler config, and its guess for a Next.js repo is a
@@ -463,8 +485,10 @@ and push, so RSS and sitemap use the real address.
 ### What Cloudflare actually does
 
 Clones the repo → `pnpm install --frozen-lockfile` → `pnpm build` →
-`npx wrangler deploy` uploads `out/` → serves it from the edge network. No Node
-process runs in production. `public/_headers` is applied automatically.
+`npx wrangler deploy` uploads `out/` and bundles `worker/index.ts` → serves both
+from the edge network. No Node process runs in production, and no page is
+rendered at request time. `public/_headers` is applied automatically to the
+static files; the Worker sets its own headers on `/api/*`.
 
 ---
 
@@ -567,3 +591,191 @@ strikethrough, fenced code blocks with highlighting, footnotes.
 
 The editor writes all of this for you — this table is for when you'd rather
 edit a file by hand, which is always allowed.
+
+---
+
+## 12. Views and reactions
+
+Every post carries a view count and four reaction buttons. There are no
+accounts, no cookie banner, and the site is still a static export — the pages in
+`out/` are the same prebuilt HTML they always were.
+
+### What actually changed
+
+`wrangler.jsonc` now has a `main` script as well as its assets. The
+`run_worker_first: ["/api/*"]` rule is what keeps this honest: only those two
+paths reach `worker/index.ts`. Every page, image and script is still answered by
+Cloudflare's asset worker without running any code of ours.
+
+```
+POST /api/engagement/   { slug, visitor } → { views, reactions, mine }
+POST /api/react/        { slug, visitor, kind } → { views, reactions, mine }
+```
+
+One request on page load, one per button press. Both go to D1.
+
+### Two identities, neither of them a login
+
+| | What it is | What it's for |
+|---|---|---|
+| **daily hash** | salted SHA-256 of IP + user-agent, re-salted every UTC midnight | view dedupe, rate limiting |
+| **visitor id** | random uuid the browser mints and keeps in `localStorage` | remembering *your* reactions across reloads |
+
+The daily hash is computed server-side and never leaves the Worker. No IP is
+written to the database, and because the salt rotates, yesterday's rows cannot
+be matched against today's visitors — which is also why they're safe to delete.
+
+The visitor id is forgeable and meant to be. It buys continuity, not trust.
+
+### Why spam doesn't pay
+
+Four layers, in the order a request meets them:
+
+1. **Same-origin only.** A missing or foreign `Origin`/`Sec-Fetch-Site` is
+   rejected outright. Stops drive-by scripts for free.
+2. **Reactions are toggles, not counters.** The primary key is
+   `(slug, visitor, kind)`, so clicking a heart 500 times rewrites one row 500
+   times and the count stays at 1. There is nothing to gain by hammering it.
+3. **Views dedupe per day.** `INSERT OR IGNORE` against the daily hash — your
+   second read of a post today doesn't count twice.
+4. **Per-IP daily budgets.** 400 page pings and 80 reaction writes per IP per
+   day. A person reading the whole site never comes close; a script hits it in
+   seconds. Minting fresh uuids doesn't help, because the budget is keyed on the
+   daily hash, not on the id the browser sent.
+
+**What this does not stop:** someone determined, with a script and rotating IPs,
+can still inflate a number. Without accounts that is unavoidable. The goal is
+numbers that are directionally honest and cheap to correct, not tamper-proof
+ones — and if a post ever looks wrong, it's one `DELETE` away from fixed.
+
+### First-time setup
+
+```bash
+npx wrangler d1 create blog-engagement
+```
+
+Put the printed `database_id` into `wrangler.jsonc`, then create the tables and
+the salt:
+
+```bash
+npx wrangler d1 execute blog-engagement --remote --file worker/schema.sql
+npx wrangler secret put VISITOR_SALT      # paste any long random string
+```
+
+`VISITOR_SALT` is what makes the daily hashes unguessable. Without it the Worker
+still runs, but someone who knows a reader's IP could confirm they visited — set
+it.
+
+Deploy as usual. The nightly cron in `wrangler.jsonc` sweeps the expired dedupe
+and rate-limit rows at 04:00 UTC.
+
+### What it costs
+
+Nothing, on Cloudflare's free plan, by a wide margin.
+
+| | Free allowance | What this blog spends |
+| --- | --- | --- |
+| Worker requests | 100,000 / day | ~1 per pageview. Static pages, images and scripts are served as **assets**, which are free and unlimited and never touch this budget. |
+| D1 rows written | 100,000 / day | ~3 per unique pageview (rate-limit tick, dedupe row, total bump). |
+| D1 rows read | 5,000,000 / day | ~10 per request, and only via indexed lookups. |
+| D1 storage | 5 GB | Kilobytes. The two expiring tables are swept nightly. |
+
+The binding constraint is **D1 writes**: roughly **30,000 pageviews a day**
+before the free tier runs out, and it is the rate-limit tick that dominates. If
+this blog ever gets near that, the fix is to stop writing that row on every ping
+— but that is a problem worth having.
+
+Free-tier limits are daily and hard: past them D1 rejects queries until the
+window resets. The site itself keeps serving — the pages are static and the
+reaction bar simply stops updating.
+
+### Looking at the data in DBeaver
+
+D1 is SQLite, so DBeaver reads it with the plain **SQLite** driver — but there
+is no host or port to connect to. D1 speaks HTTP, not the SQLite wire protocol,
+so what you open is always a *file*. There are two, and they are different
+things.
+
+**The local dev database** — live, and the one to poke at while building. It is
+a real SQLite file that `wrangler dev` writes to as you click around:
+
+```bash
+find .wrangler -path '*d1*' -name '*.sqlite' -not -name 'metadata.sqlite'
+```
+
+Open that path in DBeaver → New Connection → SQLite → set it as the database
+file. Edits you make there are real and take effect immediately.
+
+**Production** — a snapshot. Pull one with:
+
+```bash
+pnpm db:pull      # → .local/engagement.db
+```
+
+That exports the remote database and rebuilds it as a SQLite file DBeaver can
+open the same way. `.local/` is gitignored; it holds real visitor rows.
+
+> **The snapshot is a copy, not a connection.** Editing it in DBeaver changes
+> nothing in production, and re-running `pnpm db:pull` overwrites your edits.
+> To change live data, go through Wrangler:
+>
+> ```bash
+> npx wrangler d1 execute blog-engagement --remote \
+>   --command "DELETE FROM reactions WHERE slug = 'some-post'"
+> ```
+
+If you would rather not leave the terminal at all, the Cloudflare dashboard has
+a query console at **Workers & Pages → D1 → blog-engagement → Console**.
+
+### What you'll find in there
+
+| Table | Holds |
+| --- | --- |
+| `post_views` | One row per post: the running total. |
+| `reactions` | One row per (post, visitor, kind). `visitor` is the browser-held uuid. |
+| `post_view_visitors` | Today's dedupe. `visitor` is the **daily hash** — 32 hex characters, not an IP and not reversible. |
+| `rate_limit` | Today's per-IP write budgets, keyed on the same daily hash. |
+
+The bottom two tables are the privacy story made concrete: pull a snapshot and
+the only trace of any reader is a hash that stops meaning anything at midnight.
+
+### Optional: counts in the static HTML
+
+Left alone, a post ships with an empty bar that fills in once the browser has
+called the API — a small flicker on every page. Set these three variables in the
+Cloudflare build settings and `next build` reads the totals straight from D1 and
+bakes them into the markup instead:
+
+```
+CF_ACCOUNT_ID, CF_D1_DATABASE_ID, CF_API_TOKEN   # token scoped to D1 read
+```
+
+It's purely an optimisation, and `engagement-snapshot.ts` treats it that way:
+unset variables, a network failure or a bad token all log a warning and produce
+an empty snapshot. None of them can fail a deploy.
+
+### Working on it locally
+
+`next dev` runs no Worker, so `src/lib/engagement.dev.ts` stands in with an
+in-memory store behind `api/engagement/route.dev.ts` and `api/react/route.dev.ts`
+— the same `.dev.ts` trick the writing desk uses (§4), so none of it exists in
+the production build. Counts reset when the dev server restarts, and views are
+*not* deduped there so a reload visibly ticks up.
+
+To exercise the real Worker and a local database:
+
+```bash
+pnpm build && npx wrangler dev
+```
+
+### Changing the reactions
+
+`REACTIONS` in `src/lib/engagement.ts` is the single source of truth — the
+Worker, the component and the dev stub all read it. Adding an entry needs no
+migration; `kind` is just a string column. Removing one leaves its old rows
+behind, harmless but countable, so clear them out:
+
+```bash
+npx wrangler d1 execute blog-engagement --remote \
+  --command "DELETE FROM reactions WHERE kind = 'think'"
+```
