@@ -777,10 +777,12 @@ variables, a network failure or a bad token all log a warning and produce an
 empty snapshot. None of them can fail a deploy, and nothing but the flicker
 changes.
 
-> An earlier version also used this to order the home page's featured slot by
-> reaction count. It was removed: sorting the hero has to happen at build time,
-> which meant the whole feature hung on a build-time API token, and the payoff
-> was reordering a single card. The home page leads with the newest post.
+> An earlier version used this to order the home page's featured card too, and
+> that was a mistake — not the feature, the *assumption*. Insisting the answer
+> be known before the page was served forced a build-time D1 read, which meant
+> an API token and three build variables to reorder one card. The card now sorts
+> on the client from the summary the listings already fetch, and needs none of
+> it. See §14.
 
 ### Counts on the listing rows
 
@@ -959,3 +961,37 @@ read the theme's CSS custom properties directly, so light/dark needs no second
 palette. A library would have been more code to configure than this was to
 write. If the dashboard ever grows a real time series with zooming and
 brushing, revisit that.
+
+---
+
+## 14. The featured card
+
+`FeaturedSlot` picks the most-reacted post, falling back to the newest. It
+reads the same `/api/summary` the listing rows already fetch, so it costs no
+extra request.
+
+Server render and first client render both see an empty summary, so both
+produce the newest post — no hydration mismatch, and "newest" is the fallback
+for free rather than a special case.
+
+### What it trades
+
+On a **first** visit the card can change once, a moment after load. There is no
+layout shift — `FeaturedPost` has a fixed min-height — but the cover image
+swaps, which costs one extra image download and makes the measured LCP describe
+an image the reader no longer sees. On repeat visits the summary is already
+cached and the card is right immediately.
+
+### Two things that had to move with it
+
+**The list shows every post.** It used to be `posts` minus the newest, on the
+assumption the newest was always the card. Once the card is chosen on the
+client that no longer holds, and whichever post the card dropped would have
+vanished from the page entirely — not featured, not listed. So the list is now
+all posts and the heading is "All posts". The featured post appears twice,
+which is the ordinary trade for a lead card.
+
+**The pill still means "newest".** It is server-rendered and names the newest
+post; the card below leads on reactions and says so. Keeping them independent
+avoids the pill linking to one post while naming another, and the two are
+labelled clearly enough to read as different things.

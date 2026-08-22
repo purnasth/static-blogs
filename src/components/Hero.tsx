@@ -71,7 +71,7 @@ export function Pill({
           live ? "animate-pulse" : ""
         }`}
       />
-      <span className="truncate">{children}</span>
+      <span className="truncate text-xxs">{children}</span>
     </>
   );
 

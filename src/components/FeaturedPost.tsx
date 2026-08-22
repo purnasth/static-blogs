@@ -19,76 +19,70 @@ export default function FeaturedPost({
   label?: string;
 }) {
   return (
-    <article className="group relative isolate mt-12 flex min-h-[20rem] flex-col justify-end overflow-hidden rounded-[1.75rem] shadow-lg sm:min-h-[24rem]">
-      <Backdrop post={post} />
+    <article className="group isolate relative mt-12 overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300">
+      <Link
+        href={`/posts/${post.slug}/`}
+        className="flex flex-col justify-end min-h-[20rem] sm:min-h-[24rem]"
+      >
+        <Backdrop post={post} />
 
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0c0806]/96 from-15% via-[#0c0806]/70 via-40% to-[#0c0806]/10"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_0%,transparent_35%,rgba(0,0,0,0.45)_100%)]"
-      />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0c0806]/96 from-15% via-[#0c0806]/70 via-40% to-[#0c0806]/10"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_0%,transparent_35%,rgba(0,0,0,0.45)_100%)]"
+        />
 
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-[1.75rem] ring-1 ring-inset ring-white/15"
-      />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/15 m-2 rounded-3xl"
+        />
 
-      <div className="relative p-4 sm:p-6">
-        <p className="flex items-center gap-2 text-micro uppercase tracking-wider! text-white/65">
-          <span
-            aria-hidden
-            className="h-[0.5px] w-12 bg-gradient-to-r from-white/70 to-transparent"
-          />
-          {label}
-        </p>
-
-        <h2 className="mt-2 max-w-2xl text-title font-semibold text-white drop-shadow-[0_1px_20px_rgba(0,0,0,0.35)]">
-          <Link
-            href={`/posts/${post.slug}/`}
-            className="after:absolute after:inset-0"
-          >
-            {post.title}
-          </Link>
-        </h2>
-
-        {post.summary && (
-          <p className="mt-2 max-w-xl text-sm text-pretty text-white/70">
-            {post.summary}
+        <div className="relative p-4 sm:p-6">
+          <p className="flex items-center gap-2 text-micro text-white/65 border border-white/10 rounded-full px-3 py-1 w-fit backdrop-blur-sm bg-white/5">
+            {label}
           </p>
-        )}
 
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-3 text-meta text-white/55">
-          <time dateTime={post.date} className="font-italic text-micro">
-            {formatDate(post.date)}
-          </time>
-          <span aria-hidden className="scale-150 text-white/30">
-            ·
-          </span>
-          <span className="font-italic text-micro">{post.readingTime}</span>
+          <h2 className="mt-2 max-w-2xl text-base md:text-xl font-semibold text-white drop-shadow-[0_1px_20px_rgba(0,0,0,0.35)]">
+            {post.title}
+          </h2>
 
-          <PostStats slug={post.slug} variant="overlay" />
+          {post.summary && (
+            <p className="mt-2 max-w-xl text-xs text-pretty text-white/70">
+              {post.summary}
+            </p>
+          )}
 
-          <span
-            aria-hidden
-            className="ml-auto inline-flex items-center gap-2 text-white/90"
-          >
-            Read
-            <span className="grid size-6 place-items-center rounded-full border border-white/25 transition-all duration-300 group-hover:border-white/60 group-hover:bg-white/10">
-              →
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-3 text-meta text-white/55">
+            <time dateTime={post.date} className="font-italic text-micro">
+              {formatDate(post.date)}
+            </time>
+            <span aria-hidden className="scale-150 text-white/30">
+              ·
             </span>
-          </span>
+            <span className="font-italic text-micro">{post.readingTime}</span>
+
+            <PostStats slug={post.slug} variant="overlay" />
+
+            <span
+              aria-hidden
+              className="ml-auto inline-flex items-center gap-2 text-white/80 text-xs rounded-full px-3 py-1 backdrop-blur-sm bg-white/10 hover:text-white hover:bg-white/20 transition-colors"
+            >
+              Read
+              <span className="">→</span>
+            </span>
+          </div>
         </div>
-      </div>
+      </Link>
     </article>
   );
 }
 
 function Backdrop({ post }: { post: PostSummary }) {
   const motion =
-    "absolute inset-0 -z-10 transition-transform duration-[900ms] ease-out group-hover:scale-[1.06]";
+    "absolute inset-0 -z-10 transition-transform duration-[900ms] ease-out group-hover:scale-[1.15]";
 
   if (post.cover) {
     return (
