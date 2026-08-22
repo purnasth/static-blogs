@@ -162,6 +162,7 @@
   --text-ui--line-height: 1.4;
   --text-micro: 0.6875rem;
   --text-micro--line-height: 1.45;
+  --text-xxs: 0.625rem;
 
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
@@ -212,8 +213,6 @@
 @utility eyebrow {
   font-size: var(--text-meta);
   font-weight: 500;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
   color: var(--fg-subtle);
 }
 
@@ -301,6 +300,11 @@ var {
   font-family: var(--font-italic-stack), ui-serif, Georgia, serif;
   font-style: italic;
   font-synthesis-style: none;
+}
+
+
+button {
+  cursor: pointer;
 }
 
 :is(code, kbd, samp, pre) :is(em, i, cite, var) {

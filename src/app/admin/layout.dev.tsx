@@ -29,6 +29,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </span>
               Writing desk
             </Link>
+
+            <nav className="flex items-center gap-1 text-meta">
+              <Link
+                href="/admin/"
+                className="rounded-md px-2 py-1 text-muted transition-colors hover:bg-active hover:text-foreground"
+              >
+                Posts
+              </Link>
+              <Link
+                href="/admin/stats/"
+                className="rounded-md px-2 py-1 text-muted transition-colors hover:bg-active hover:text-foreground"
+              >
+                Numbers
+              </Link>
+            </nav>
           </div>
 
           <div className="flex items-center gap-3">

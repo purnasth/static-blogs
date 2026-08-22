@@ -113,6 +113,7 @@ sitemap.
 | `/admin/` | The hub. Lists every post (drafts included) with a link to edit each one, a **New post** button, and the **Publish** panel showing your git branch, whether a remote is configured, and how many changes are waiting. |
 | `/admin/edit/new/` | Blank editor. Creating a post. |
 | `/admin/edit/<slug>/` | The same editor loaded with an existing post, plus a **Delete** button. |
+| `/admin/stats/` | **Numbers** — real production engagement, charted. See §13. |
 
 ### Writing API endpoints — local only, never deployed
 
@@ -124,6 +125,7 @@ You never call these by hand; the editor does. Listed so you know what exists.
 | `DELETE /api/posts/<slug>/` | Deletes that post's file. |
 | `POST /api/images/` | Saves an uploaded image into `public/images/`, avoiding name collisions. |
 | `POST /api/publish/` | `git add -A`, commit, push. |
+| `GET /api/stats/` | Reads live production D1 by shelling out to Wrangler, for `/admin/stats/`. |
 
 ### Engagement endpoints — the only ones that are deployed
 
@@ -358,6 +360,8 @@ src/components/engagement/
 src/components/admin/
   PostList.tsx            post list + publish panel (client)
   PostEditor.tsx          the editor (client)
+  StatsDashboard.tsx      the Numbers dashboard (client)
+  charts.tsx              chart primitives + the validated series palette
 worker/
   index.ts                the /api/* engagement Worker — §12
   schema.sql              its D1 tables
@@ -877,3 +881,81 @@ npx wrangler d1 execute blog-engagement --remote \
 - **Motion** is two keyframes at the end of `globals.css`, `reaction-pop` and
   `count-roll`. Both are cancelled by the existing `prefers-reduced-motion`
   block — its `!important` longhands beat the shorthands regardless of order.
+
+---
+
+## 13. The numbers dashboard
+
+`/admin/stats/` charts real production engagement. Like the rest of the writing
+desk it exists only under `next dev` and is absent from the built site.
+
+### Where the data comes from
+
+`GET /api/stats/` shells out to Wrangler:
+
+```
+wrangler d1 execute blog-engagement --remote --json --command "<one UNION>"
+```
+
+That borrows the login you already have, so it needs **no API token** — the same
+trick as `pnpm db:pull`, and the reason there is no production counterpart to
+this route. It is one invocation rather than two because spawning wrangler costs
+a couple of seconds; views and the reaction breakdown come back as one UNION.
+
+If the panel reports an error, the cause is almost always `wrangler whoami`
+being logged out, or `database_id` still being a placeholder.
+
+### What it shows
+
+| View | Question it answers | Form |
+| --- | --- | --- |
+| KPI row | What are the headline numbers? | Stat tiles — four numbers do not need a chart |
+| Reach vs. resonance | Which posts earned a response rather than just a visit? | Quadrant scatter |
+| Reaction fingerprint | Which *kind* of response did each post draw? | Heatmap grid |
+| Every number | — | Table |
+
+**Reach vs. resonance is the chart.** x is how many people arrived, y is what
+share of them cared enough to press something, and the dashed crosshair sits at
+this blog's own averages — so the quadrants read relative to your writing, not
+to an outside benchmark. The corner worth acting on is top-left, *Hidden gems*:
+posts almost nobody found, that the people who did responded to.
+
+It is deliberately one plot rather than two bar charts. Reach and resonance are
+different scales, so they could never share an axis — and the point is the
+*relationship* between them, which is a position, not two lengths.
+
+Resonance is not a percentage: one reader can leave all four reactions, so it
+legitimately exceeds 100.
+
+The fingerprint is a grid rather than a stacked bar because a stack answers
+"how many altogether" and makes individual kinds hard to compare — each segment
+starts at a different offset. A grid puts every post's "Learned something" in
+one column, so a post's shape reads down a column and across a row at once.
+
+There is no views-over-time chart because there is no view history to draw it
+from: `post_views` keeps a running total and `post_view_visitors` is pruned
+nightly. Adding one would mean a `post_views_daily` table and an extra write per
+counted view.
+
+### Colour: one hue, not four
+
+An earlier version gave each reaction kind its own categorical hue. That is the
+wrong job for this data, and it also failed its checks — the site's tokens are
+built for one accent at a time (`--lift: 42%` mixes toward white for dark mode),
+and four hues treated that way collapse toward grey at ΔE 8.8 for *normal*
+vision.
+
+Identity here comes from **position** — a labelled column, a labelled point —
+which leaves colour free to encode magnitude. So both charts use the site's own
+accent as a single sequential ramp. A one-hue ramp cannot fail a
+colour-blindness check the way four competing hues can, and the charts inherit
+the theme instead of fighting it.
+
+### Why no chart library
+
+The scatter is hand-written SVG and the heatmap is a table with a computed
+`color-mix` background — together about 200 lines with no dependency, and both
+read the theme's CSS custom properties directly, so light/dark needs no second
+palette. A library would have been more code to configure than this was to
+write. If the dashboard ever grows a real time series with zooming and
+brushing, revisit that.
