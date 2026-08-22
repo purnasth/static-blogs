@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import PostStats from "@/components/engagement/PostStats";
 import { formatDate } from "@/lib/format";
 import type { PostSummary } from "@/lib/types";
 import Image from "next/image";
@@ -67,6 +68,8 @@ export default function FeaturedPost({
             ·
           </span>
           <span className="font-italic text-micro">{post.readingTime}</span>
+
+          <PostStats slug={post.slug} variant="overlay" />
 
           <span
             aria-hidden

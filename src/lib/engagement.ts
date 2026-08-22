@@ -7,18 +7,36 @@
  * `process.env` access does not exist in a Worker without `nodejs_compat`.
  */
 
+/**
+ * The four reactions, in display order.
+ *
+ * Icons are deliberately NOT here. This module is imported by the Cloudflare
+ * Worker, and naming a React component in it would drag the renderer into an
+ * edge bundle. `ReactionBar` maps kind -> icon on the client instead.
+ *
+ * `kind` is the value stored in D1, so renaming one orphans its existing rows.
+ */
 export const REACTIONS = [
-  { kind: "love", emoji: "❤️", label: "Loved it" },
-  { kind: "clap", emoji: "👏", label: "Nice work" },
-  { kind: "insight", emoji: "💡", label: "Learned something" },
-  { kind: "think", emoji: "🤔", label: "Made me think" },
+  { kind: "love", label: "Loved it" },
+  { kind: "celebrate", label: "Nice work" },
+  { kind: "insight", label: "Learned something" },
+  { kind: "inspire", label: "Inspiring" },
 ] as const;
 
 export type ReactionKind = (typeof REACTIONS)[number]["kind"];
 
 export type ReactionCounts = Record<ReactionKind, number>;
 
-/** What both endpoints return. `mine` is what *this* visitor has reacted with. */
+/** Aggregate counts for one post. No `mine` — this is nobody's in particular. */
+export type PostTotals = {
+  views: number;
+  reactions: ReactionCounts;
+};
+
+/** What `/api/summary` returns, keyed by slug. */
+export type EngagementSummary = Record<string, PostTotals>;
+
+/** What both engagement endpoints return. `mine` is *this* visitor's. */
 export type Engagement = {
   views: number;
   reactions: ReactionCounts;
@@ -64,6 +82,12 @@ export const VISITOR_STORAGE_KEY = "visitor-id";
 export const ENGAGEMENT_ENDPOINT = "/api/engagement/";
 export const REACT_ENDPOINT = "/api/react/";
 
+/**
+ * Bulk totals for every post, for the listings. GET and identical for everyone,
+ * so unlike the two above it can be cached at the edge.
+ */
+export const SUMMARY_ENDPOINT = "/api/summary/";
+
 /** Read the stored reaction identity, minting one on first visit. */
 export function getVisitorId(): string {
   try {
@@ -82,3 +106,9 @@ export function getVisitorId(): string {
 export function formatCount(value: number): string {
   return value.toLocaleString("en-US");
 }
+
+/** How far through a post the floating reaction bar appears. */
+export const STICKY_REACTIONS_AT = 0.6;
+
+/** Anchors the floating bar's "is the real one already on screen?" check. */
+export const REACTION_BAR_ID = "reactions";

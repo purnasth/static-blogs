@@ -134,6 +134,7 @@ post. No accounts; see §12 for how they stay honest without one.
 | --- | --- |
 | `POST /api/engagement/` | Records a view (once per visitor per post per day) and returns the current counts. |
 | `POST /api/react/` | Toggles one reaction on or off and returns the current counts. |
+| `GET /api/summary/` | Totals for every post, for the listing rows. Identical for every visitor, so unlike the other two it is cached at the edge. |
 
 ---
 
@@ -345,8 +346,15 @@ src/app/
   admin/page.dev.tsx      post list + publish     │ dev only
   admin/edit/[slug]/…     editor                  │
   api/**/*.dev.ts         save / delete / upload / publish ┘
-src/components/
-  PostEngagement.tsx      views + reaction bar (client)
+src/components/engagement/
+  EngagementProvider.tsx  owns the one request a post makes; the rest subscribe
+  ReactionBar.tsx         the bar at the end, and the floating one
+  ReactionSummary.tsx     icons + total in the post header, links to the bar
+  PostStats.tsx           views + reactions on every listing row
+  ViewCount.tsx           views beside the date in the post header
+  RollingCount.tsx        a number that slides when it changes
+  summaryStore.ts         one /api/summary fetch shared by a whole listing
+  icons.tsx               kind -> lucide icon, and the shared glyph row
 src/components/admin/
   PostList.tsx            post list + publish panel (client)
   PostEditor.tsx          the editor (client)
@@ -706,6 +714,16 @@ find .wrangler -path '*d1*' -name '*.sqlite' -not -name 'metadata.sqlite'
 Open that path in DBeaver → New Connection → SQLite → set it as the database
 file. Edits you make there are real and take effect immediately.
 
+Miniflare names that file after the `database_id`, so **changing the id in
+`wrangler.jsonc` hands you a brand-new empty database** — and a DBeaver
+connection still pointed at the old file. The symptom is the Worker returning
+`no such table: rate_limit`. Re-run the `find`, repoint DBeaver, and reapply the
+schema:
+
+```bash
+npx wrangler d1 execute blog-engagement --local --file worker/schema.sql
+```
+
 **Production** — a snapshot. Pull one with:
 
 ```bash
@@ -750,14 +768,38 @@ bakes them into the markup instead:
 CF_ACCOUNT_ID, CF_D1_DATABASE_ID, CF_API_TOKEN   # token scoped to D1 read
 ```
 
-It's purely an optimisation, and `engagement-snapshot.ts` treats it that way:
-unset variables, a network failure or a bad token all log a warning and produce
-an empty snapshot. None of them can fail a deploy.
+It is purely cosmetic, and `engagement-snapshot.ts` treats it that way: unset
+variables, a network failure or a bad token all log a warning and produce an
+empty snapshot. None of them can fail a deploy, and nothing but the flicker
+changes.
+
+> An earlier version also used this to order the home page's featured slot by
+> reaction count. It was removed: sorting the hero has to happen at build time,
+> which meant the whole feature hung on a build-time API token, and the payoff
+> was reordering a single card. The home page leads with the newest post.
+
+### Counts on the listing rows
+
+Listings are a different problem from a post page: twenty rows must not mean
+twenty requests, and `PostRow` appears on the home page, every tag page and the
+404, so threading a provider through all of them would be easy to forget.
+
+`summaryStore.ts` solves both. It is a module-level store read through
+`useSyncExternalStore` — the first row to mount starts one `GET /api/summary`,
+every other row joins it, and a page that wires up nothing still works. If the
+request fails the rows simply render without counts.
+
+That endpoint is a GET, carries no `mine`, and records no view, which is what
+makes it cacheable: `cache-control: public, max-age=60` plus an explicit
+`caches.default` put, so a busy home page costs about one D1 read a minute
+rather than one per visitor. Nothing a reader acts on is served from it — the
+post page always fetches its own live numbers.
 
 ### Working on it locally
 
 `next dev` runs no Worker, so `src/lib/engagement.dev.ts` stands in with an
-in-memory store behind `api/engagement/route.dev.ts` and `api/react/route.dev.ts`
+in-memory store behind `api/engagement/`, `api/react/` and `api/summary/`
+`route.dev.ts` files
 — the same `.dev.ts` trick the writing desk uses (§4), so none of it exists in
 the production build. Counts reset when the dev server restarts, and views are
 *not* deduped there so a reload visibly ticks up.
@@ -768,14 +810,70 @@ To exercise the real Worker and a local database:
 pnpm build && npx wrangler dev
 ```
 
+**Use `http://localhost:<port>`, not `http://127.0.0.1:<port>`.** Next's dev
+server treats the two as different origins and blocks its own JS chunks on the
+mismatch, so the page renders as server HTML with no client behaviour at all —
+no counts, no reactions, no theme toggle. It looks exactly like a broken
+feature, and the only clue is a `Blocked cross-origin request` line in
+`.next/dev/logs/next-development.log`.
+
 ### Changing the reactions
 
-`REACTIONS` in `src/lib/engagement.ts` is the single source of truth — the
-Worker, the component and the dev stub all read it. Adding an entry needs no
-migration; `kind` is just a string column. Removing one leaves its old rows
-behind, harmless but countable, so clear them out:
+`REACTIONS` in `src/lib/engagement.ts` is the single source of truth for the
+kinds and their labels. Icons live separately, in `icons.ts` — `engagement.ts`
+is also bundled into the Worker, and naming a React component in it would drag
+the renderer into an edge script.
+
+The current set, chosen so no two overlap:
+
+| kind | icon (lucide) | label | covers |
+| --- | --- | --- | --- |
+| `love` | `Heart` | Loved it | affection for the piece |
+| `celebrate` | `PartyPopper` | Nice work | praise for the author |
+| `insight` | `Lightbulb` | Learned something | it taught you something |
+| `inspire` | `Rocket` | Inspiring | it made you want to act |
+
+Icons come from **lucide-react**. It was picked over `react-icons` because the
+hand-drawn icons already in `ThemeToggle.tsx` use Lucide's exact convention —
+`fill="none" stroke="currentColor" strokeWidth="1.5"`, round caps — so they sit
+together without a seam. Lucide has no clapping-hands icon, which is why
+applause is a party popper.
+
+**Fill means "you did this."** In the bar, all four icons fill when held, via
+`fill="currentColor"` on the Lucide stroke path; everywhere else they stay
+outlined. That rule is why the header summary is outlined even though it shows
+the same icons — nothing in that row is yours, so nothing should look claimed.
+
+An earlier version filled only the heart, on the assumption that solid would
+turn the busier glyphs into blobs. Rendering them showed otherwise, and a set
+where one icon changes shape and three don't reads as a bug rather than a
+choice.
+
+Adding a reaction needs no migration; `kind` is just a string column. Renaming
+or removing one orphans its rows — harmless, since `isReactionKind` filters
+unknown kinds out of every response, but they still occupy space:
 
 ```bash
 npx wrangler d1 execute blog-engagement --remote \
-  --command "DELETE FROM reactions WHERE kind = 'think'"
+  --command "DELETE FROM reactions WHERE kind NOT IN ('love','celebrate','insight','inspire')"
 ```
+
+### The rest of the UI
+
+- **The header summary** (`ReactionSummary`) shows an outlined icon per kind
+  that has reactions, then the total, and links down to `#reactions`. Only kinds
+  with a count appear, so the row says something specific instead of showing
+  four constant glyphs. Outlined keeps it level with the eye in `ViewCount` and
+  with the rest of the metadata line — see the fill rule above. The icons are
+  also not overlapped the way a feed stacks avatars: those work overlapped
+  because they are multi-coloured photos, whereas glyphs in one colour smear.
+- **Views in the header** sit beside the date via `ViewCount`, which carries its
+  own separator rather than being passed to `MetaRow` — MetaRow drops falsy
+  *items*, and `<ViewCount />` is a truthy element even on the render where it
+  returns null, so inside MetaRow it would leave a dot hanging off the line.
+- **The floating bar** appears past `STICKY_REACTIONS_AT` (60%) and hides again
+  whenever the real bar is on screen, watched with an IntersectionObserver on
+  `#reactions`. Reactions parked at the very bottom only reach people who finish.
+- **Motion** is two keyframes at the end of `globals.css`, `reaction-pop` and
+  `count-roll`. Both are cancelled by the existing `prefers-reduced-motion`
+  block — its `!important` longhands beat the shorthands regardless of order.

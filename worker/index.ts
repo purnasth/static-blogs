@@ -26,6 +26,7 @@ import {
   SLUG_PATTERN,
   VISITOR_PATTERN,
   type Engagement,
+  type EngagementSummary,
   type ReactionCounts,
   type ReactionKind,
 } from "../src/lib/engagement";
@@ -49,6 +50,16 @@ interface D1Database {
     statements: D1PreparedStatement[],
   ): Promise<D1Result<T>[]>;
 }
+
+type ExecutionContext = { waitUntil(promise: Promise<unknown>): void };
+
+type WorkerCache = {
+  match(request: Request): Promise<Response | undefined>;
+  put(request: Request, response: Response): Promise<void>;
+};
+
+/** `caches.default` is a Workers extension the DOM's CacheStorage type lacks. */
+const edgeCache = (): WorkerCache => (caches as unknown as { default: WorkerCache }).default;
 
 type Env = {
   DB: D1Database;
@@ -239,22 +250,73 @@ async function handleReact(request: Request, env: Env): Promise<Response> {
   return json(await readEngagement(env.DB, slug, visitor));
 }
 
+/**
+ * GET /api/summary — totals for every post, for the listing pages.
+ *
+ * The listings need counts for a dozen posts at once, and asking per post would
+ * be a dozen requests. This answer is identical for every visitor — no `mine`,
+ * no view recorded — which is exactly what makes it cacheable, so a busy home
+ * page costs one D1 read a minute rather than one per visit.
+ */
+async function handleSummary(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  const cache = edgeCache();
+  const hit = await cache.match(request);
+  if (hit) return hit;
+
+  const [views, reactions] = await env.DB.batch([
+    env.DB.prepare(`SELECT slug, views FROM post_views`),
+    env.DB.prepare(`SELECT slug, kind, COUNT(*) AS n FROM reactions GROUP BY slug, kind`),
+  ]);
+
+  const totals: EngagementSummary = {};
+  const entry = (slug: string) => (totals[slug] ??= { views: 0, reactions: emptyCounts() });
+
+  for (const row of views.results as { slug: string; views: number }[]) {
+    entry(row.slug).views = row.views;
+  }
+  for (const row of reactions.results as { slug: string; kind: string; n: number }[]) {
+    if (isReactionKind(row.kind)) entry(row.slug).reactions[row.kind] = row.n;
+  }
+
+  const response = new Response(JSON.stringify(totals), {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      // A minute stale on a listing is invisible. The post page still fetches
+      // its own live numbers, so nothing a reader acts on is ever cached.
+      "cache-control": "public, max-age=60",
+    },
+  });
+
+  ctx.waitUntil(cache.put(request, response.clone()));
+  return response;
+}
+
 // ---------------------------------------------------------------------------
 
 const handler = {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const { pathname } = new URL(request.url);
 
     // run_worker_first should mean we only ever see /api/*, but a Worker that
     // silently swallows the site if that config drifts is not worth the risk.
     if (!pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
 
-    if (request.method !== "POST") return json({ error: "method not allowed" }, 405);
     if (!isSameOrigin(request)) return json({ error: "forbidden" }, 403);
 
     const route = pathname.replace(/\/+$/, "");
 
     try {
+      // Read-only and cacheable, so this one is a GET and skips the write path.
+      if (route === "/api/summary") {
+        if (request.method !== "GET") return json({ error: "method not allowed" }, 405);
+        return await handleSummary(request, env, ctx);
+      }
+
+      if (request.method !== "POST") return json({ error: "method not allowed" }, 405);
       if (route === "/api/engagement") return await handleEngagement(request, env);
       if (route === "/api/react") return await handleReact(request, env);
       return json({ error: "not found" }, 404);

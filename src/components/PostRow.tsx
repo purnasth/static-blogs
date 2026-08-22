@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PostStats from "@/components/engagement/PostStats";
 import TagChip from "@/components/TagChip";
 import { Badge, MetaRow } from "@/components/ui";
 import { formatDate } from "@/lib/format";
@@ -8,19 +9,25 @@ import type { PostSummary } from "@/lib/types";
 export default function PostRow({ post }: { post: PostSummary }) {
   return (
     <article className="group relative py-6">
-      <MetaRow
-        items={[
-          <time key="date" dateTime={post.date}>
-            {formatDate(post.date)}
-          </time>,
-          post.readingTime,
-          post.draft && (
-            <Badge key="draft" tone="warn">
-              draft
-            </Badge>
-          ),
-        ]}
-      />
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <MetaRow
+          items={[
+            <time key="date" dateTime={post.date}>
+              {formatDate(post.date)}
+            </time>,
+            post.readingTime,
+            post.draft && (
+              <Badge key="draft" tone="warn">
+                draft
+              </Badge>
+            ),
+          ]}
+        />
+        {/* relative z-10 so the counts stay above the title's full-row overlay. */}
+        <div className="relative z-10 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <PostStats slug={post.slug} />
+        </div>
+      </div>
 
       <h2 className="mt-1.5 text-title font-semibold">
         <Link

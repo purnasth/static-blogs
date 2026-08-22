@@ -9,7 +9,13 @@
  * nothing in the static build imports it, out of the bundle. See next.config.ts.
  */
 
-import { emptyCounts, isReactionKind, type Engagement, type ReactionKind } from "@/lib/engagement";
+import {
+  emptyCounts,
+  isReactionKind,
+  type Engagement,
+  type EngagementSummary,
+  type ReactionKind,
+} from "@/lib/engagement";
 
 const views = new Map<string, number>();
 const reactions = new Map<string, Set<ReactionKind>>();
@@ -47,4 +53,20 @@ export function toggleReaction(slug: string, visitor: string, kind: unknown): En
   reactions.set(id, held);
 
   return read(slug, visitor);
+}
+
+/** Totals for every post, standing in for the Worker's `/api/summary`. */
+export function summary(): EngagementSummary {
+  const totals: EngagementSummary = {};
+  const entry = (slug: string) => (totals[slug] ??= { views: 0, reactions: emptyCounts() });
+
+  for (const [slug, count] of views) entry(slug).views = count;
+
+  // Keys are `slug::visitor`, and SLUG_PATTERN forbids ":" — so this is safe.
+  for (const [id, kinds] of reactions) {
+    const slug = id.slice(0, id.indexOf("::"));
+    for (const kind of kinds) entry(slug).reactions[kind] += 1;
+  }
+
+  return totals;
 }
