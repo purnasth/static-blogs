@@ -1,12 +1,11 @@
 ---
-title: Hello, world
-date: 2026-08-04
-summary: How this blog is put together, and how to write the next post.
+title: 'Hello, world'
+date: '2026-08-04'
+summary: 'How this blog is put together, and how to write the next post.'
 tags:
   - meta
-draft: false
+draft: true
 ---
-
 This site is a **static blog**: every page you're reading was rendered to plain
 HTML at build time. There is no database, no server-side code, and nothing to
 log into. That is the whole point — a static site is very hard to attack and
