@@ -1,4 +1,4 @@
-# blogs-static
+# purna-blogs
 
 A personal blog whose **pages are 100% static in production**, with a **real
 writing interface** you run on your own machine. No CMS to log into, no server
@@ -9,56 +9,62 @@ buttons, served by a small Cloudflare Worker on `/api/*` backed by D1. There are
 no accounts and no cookie banner — see [DEVELOPING.md §12](DEVELOPING.md) for
 how the counts stay honest without either.
 
-<details>
-  <summary>Landing Page</summary>
-  <img
-    width="3418"
-    height="2142"
-    alt="25123"
-    src="https://github.com/user-attachments/assets/f0b0c37a-9efd-4a23-a244-f7ce80d71c90"
+<img
+    width="3420"
+    height="3516"
+    alt="purna-blogs"
+    src="https://github.com/user-attachments/assets/0f75589d-7ba8-45e0-b244-1884f487b617"
   />
-</details>
 
 <details>
-  <summary>Blogs</summary>
+  <summary>Other Pages</summary>
+
+### Blogs
 
 <img
     width="3418"
     height="2142"
-    alt="37526"
-    src="https://github.com/user-attachments/assets/21547dc9-a547-408a-84b4-d2eda1525ddc"
+    alt="Blogs overview"
+    src="https://github.com/user-attachments/assets/adfa5e5d-1ade-49ec-9875-386b78e52ff9"
   />
 
 <img
-    width="3418"
-    height="2142"
-    alt="1419"
-    src="https://github.com/user-attachments/assets/ab42e78e-ad41-4ba1-891f-abf834c634e7"
+    width="1670"
+    height="16384"
+    alt="Blogs"
+    src="https://github.com/user-attachments/assets/1c3433f0-fc41-4cfd-b291-b3ae69f99210"
   />
 
-</details>
+### Admin Dashboard
 
-<details>
-  <summary>Admin</summary>
-  <img
+<img
     width="3420"
     height="2224"
-    alt="72342"
+    alt="Admin dashboard"
     src="https://github.com/user-attachments/assets/94899291-0e1c-43bc-a9bb-fd68956e80ec"
   />
 
 <img
     width="3420"
     height="2224"
-    alt="19995"
+    alt="Admin blog management"
     src="https://github.com/user-attachments/assets/d0487706-42c5-4f01-8a70-2d69d43bffe2"
   />
 
 <img
     width="3420"
     height="2224"
-    alt="98005"
+    alt="Admin management"
     src="https://github.com/user-attachments/assets/c8969abd-b73e-432d-a3b4-a783f5e318bf"
+  />
+
+### Admin — Statistics
+
+<img
+    width="3420"
+    height="3126"
+    alt="Admin statistics"
+    src="https://github.com/user-attachments/assets/b08519a8-3ef2-4e7b-b8a9-7ad3dcbbc59a"
   />
 
 </details>

@@ -237,17 +237,17 @@ export function ReactionHeatmap({ rows }: { rows: HeatRow[] }) {
 
   return (
     <figure className="m-0 overflow-x-auto">
-      <table className="w-full min-w-[30rem] border-separate border-spacing-0.5">
+      <table className="w-full min-w-[30rem] table-fixed border-separate border-spacing-0.5">
         <thead>
           <tr>
-            <th className="w-2/5" />
+            <th className="w-1/3" />
             {REACTIONS.map(({ kind, label }) => {
               const Icon = REACTION_ICONS[kind];
               return (
-                <th key={kind} scope="col" className="pb-1.5 align-bottom">
+                <th key={kind} scope="col" className="w-1/6 pb-1.5 align-bottom">
                   <span className="flex flex-col items-center gap-1">
                     <Icon aria-hidden className="size-4 text-muted" strokeWidth={1.5} />
-                    <span className="meta text-subtle">{label}</span>
+                    <span className="meta text-balance text-center text-subtle">{label}</span>
                   </span>
                 </th>
               );
@@ -262,8 +262,6 @@ export function ReactionHeatmap({ rows }: { rows: HeatRow[] }) {
               </th>
               {REACTIONS.map(({ kind, label }) => {
                 const count = row.counts[kind];
-                // Sequential ramp between the empty surface and the accent, with
-                // a floor so "one" never looks like "none".
                 const pct = count === 0 ? 0 : Math.round(20 + (count / max) * 80);
                 return (
                   <td
