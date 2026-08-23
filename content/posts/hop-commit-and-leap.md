@@ -11,7 +11,7 @@ tags:
   - opensource
   - growth
 draft: false
-cover: /images/purna-hop-commit-leap.png
+cover: /images/purna-hop-commit-leap.jpg
 ---
 > I wish my life were a GitHub repository so that I could roll back to my last stable version.
 

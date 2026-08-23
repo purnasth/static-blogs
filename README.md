@@ -1,8 +1,13 @@
 # blogs-static
 
-A personal blog that is **100% static in production** but has a **real writing
-interface** you run on your own machine. No CMS to log into, no database, no
-server to keep patched.
+A personal blog whose **pages are 100% static in production**, with a **real
+writing interface** you run on your own machine. No CMS to log into, no server
+to keep patched.
+
+The one exception is engagement: each post shows a view count and four reaction
+buttons, served by a small Cloudflare Worker on `/api/*` backed by D1. There are
+no accounts and no cookie banner — see [DEVELOPING.md §12](DEVELOPING.md) for
+how the counts stay honest without either.
 
 <details>
   <summary>Landing Page</summary>

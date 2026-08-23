@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Wrangler's build scratch. Created by `wrangler dev`/`deploy`, gitignored,
+    // and not ours to lint — without this every local Worker run adds warnings.
+    ".wrangler/**",
   ]),
 ]);
 

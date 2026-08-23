@@ -1,27 +1,52 @@
 {
-  // Deploy config for Cloudflare Workers.
-  //
-  // This site is a PURE STATIC EXPORT: `pnpm build` writes plain HTML/CSS/JS to
-  // `out/` and there is no server. So this Worker has no `main` script — it is
-  // an assets-only Worker that just serves that directory.
-  //
-  // This file must exist and be committed. Without a wrangler config,
-  // `wrangler deploy` runs its framework auto-detection, sees Next.js, assumes
-  // a server-rendered app, and migrates the project to @opennextjs/cloudflare —
-  // which then fails looking for `.next/standalone`, a directory that
-  // `output: "export"` never produces. See DEVELOPING.md §7.
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "static-blogs",
-  "compatibility_date": "2026-08-08",
-  "assets": {
-    "directory": "./out",
-    // `trailingSlash: true` in next.config.ts means every page is
-    // `out/<route>/index.html`; auto-trailing-slash resolves both forms.
-    "html_handling": "auto-trailing-slash",
-    // Serves out/404.html for unmatched paths instead of a bare 404.
-    "not_found_handling": "404-page"
-  },
-  "observability": {
-    "enabled": true
-  }
+	// Deploy config for Cloudflare Workers.
+	//
+	// The SITE is still a pure static export: `pnpm build` writes plain HTML/CSS/JS
+	// to `out/` and no page is ever rendered by code of ours. The only dynamic
+	// surface is the engagement API in `worker/index.ts`, and `run_worker_first`
+	// below confines it to `/api/*` — everything else is answered by Cloudflare's
+	// asset worker exactly as it was before. See DEVELOPING.md §12.
+	//
+	// This file must exist and be committed. Without a wrangler config,
+	// `wrangler deploy` runs its framework auto-detection, sees Next.js, assumes
+	// a server-rendered app, and migrates the project to @opennextjs/cloudflare —
+	// which then fails looking for `.next/standalone`, a directory that
+	// `output: "export"` never produces. See DEVELOPING.md §7.
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "static-blogs",
+	"compatibility_date": "2026-08-08",
+	"main": "worker/index.ts",
+	"assets": {
+		"directory": "./out",
+		// `trailingSlash: true` in next.config.ts means every page is
+		// `out/<route>/index.html`; auto-trailing-slash resolves both forms.
+		"html_handling": "auto-trailing-slash",
+		// Serves out/404.html for unmatched paths instead of a bare 404.
+		"not_found_handling": "404-page",
+		// Lets the Worker fall back to the static files if this list ever drifts.
+		"binding": "ASSETS",
+		// Only these paths reach our code. Without it the asset worker would answer
+		// /api/* with the 404 page, because `not_found_handling` resolves a miss
+		// rather than falling through to the Worker.
+		"run_worker_first": [
+			"/api/*"
+		]
+	},
+	// Prunes the daily dedupe and rate-limit rows. 04:00 UTC is well clear of the
+	// midnight rotation those tables key on.
+	"triggers": {
+		"crons": [
+			"0 4 * * *"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "blog-engagement",
+			"database_id": "4a25842c-a689-430e-84e2-0fae91681f8e"
+		}
+	],
+	"observability": {
+		"enabled": true
+	}
 }

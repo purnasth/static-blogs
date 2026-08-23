@@ -8,7 +8,7 @@ tags:
   - lspp
   - leapfrog
 draft: false
-cover: /images/purna-lspp-to-leapfrogger.png
+cover: /images/purna-lspp-to-leapfrogger.jpg
 ---
 If someone had told me a few years ago that I would one day call myself a **Leapfrogger**, I probably would have smiled, nodded, and quietly wondered, *“What exactly is a Leapfrogger?”*
 
@@ -68,7 +68,7 @@ But that was also what made it special.
 
 Somewhere between the collaboration, the debugging, the iterations, and the inevitable *“let's just try this once”* moments, we managed to bring the idea together. And then came the moment that made all of it even more memorable:
 
-![revampathon-winner](/images/revampathon-winner.png)
+![revampathon-winner](/images/revampathon-winner.jpg)
 
 > **🏆 Revampathon Winner**
 
@@ -108,7 +108,7 @@ I was no longer simply learning what software engineering was.
 
 I was living it.
 
-![as-an-ase](/images/as-an-ase.png)
+![as-an-ase](/images/as-an-ase.jpg)
 
 ## Another Leap: From Associate to Software Engineer
 

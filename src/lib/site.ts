@@ -29,6 +29,19 @@ export const site = {
   ] satisfies NavItem[] as NavItem[],
 };
 
+/**
+ * Where a reader can follow along, shown at the end of every post. The RSS feed
+ * is always offered; these are additions.
+ *
+ * Deliberately empty rather than guessed — fill in your own profiles. This is
+ * the cheap half of "how does someone hear about the next post"; an email list
+ * is the expensive half, and it is a promise to actually send emails.
+ */
+export const follow: NavItem[] = [
+  // { href: "https://x.com/yourhandle", label: "X" },
+  // { href: "https://www.linkedin.com/in/yourhandle/", label: "LinkedIn" },
+];
+
 /** The writing desk exists only under `next dev`, so its link must too. */
 export const navItems = site.nav.filter((item) => IS_DEV || !item.devOnly);
 

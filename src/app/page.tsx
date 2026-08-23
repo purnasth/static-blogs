@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Fragment } from "react";
-import FeaturedPost from "@/components/FeaturedPost";
+import FeaturedSlot from "@/components/engagement/FeaturedSlot";
 import Hero from "@/components/Hero";
 import PostRow from "@/components/PostRow";
 import { getAllTags, getPostSummaries } from "@/lib/posts";
@@ -35,7 +35,9 @@ export default function Home() {
   // always matches the number of rows actually on the page.
   const drafts = posts.filter((p) => p.draft).length;
 
-  const [latest, ...rest] = posts;
+  // Only the pill uses this now — it genuinely means "newest", while the card
+  // below leads on reactions. The two say different things on purpose.
+  const [latest] = posts;
   const since = posts.at(-1)?.date.slice(0, 4);
   const minutes = totalReadingMinutes(posts);
   const named = tags.slice(0, NAMED_TOPICS);
@@ -52,7 +54,7 @@ export default function Home() {
         aurora
         lede={site.intro}
       >
-        {latest && <FeaturedPost post={latest} />}
+        <FeaturedSlot posts={posts} />
       </Hero>
 
       {named.length > 0 && (
@@ -110,10 +112,10 @@ export default function Home() {
         </p>
       )}
 
-      {rest.length > 0 && (
+      {posts.length > 0 && (
         <>
           <div className="mt-16 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-b border-line pb-3">
-            <h2 className="eyebrow">More posts</h2>
+            <h2 className="eyebrow">All posts</h2>
             {drafts > 0 && (
               <p
                 className="meta text-warn"
@@ -124,7 +126,7 @@ export default function Home() {
             )}
           </div>
 
-          {groupByYear(rest).map(
+          {groupByYear(posts).map(
             ([year, yearPosts]) => (
               <section key={year}>
                 <h3

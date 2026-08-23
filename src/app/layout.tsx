@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Sen, Gelasio, JetBrains_Mono } from "next/font/google";
 import SiteShell from "@/components/SiteShell";
 import { themeInitScript } from "@/components/ThemeToggle";
@@ -30,6 +30,17 @@ export const metadata: Metadata = {
   title: { default: site.title, template: `%s — ${site.title}` },
   description: site.description,
   alternates: { types: { "application/rss+xml": "/rss.xml" } },
+};
+
+/**
+ * Tints the browser chrome on mobile. Two entries because the site has a real
+ * dark theme — a single colour would leave the address bar fighting the page.
+ */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fdfdfc" },
+    { media: "(prefers-color-scheme: dark)", color: "#101010" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
