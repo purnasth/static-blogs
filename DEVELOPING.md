@@ -1123,39 +1123,63 @@ the same, add a site-wide fallback image under `openGraph.images` in
 
 ## 16. Images
 
-**Keep them small before they reach `public/images/`.** `output: "export"` forces
-`images: { unoptimized: true }` in next.config.ts, which means **Next will never
-optimise anything for you** — whatever you drop in is what every reader
-downloads, at full size, forever.
+**Uploads are optimised automatically.** Drop an image into the editor and
+`api/images/route.dev.ts` runs it through `src/lib/images.dev.ts` before it is
+written to `public/images/`. There is nothing to remember and no command to run.
 
-That is not hypothetical: this folder was once 11 MB, including a 2.3 MB post
-cover and a 2.2 MB "SVG" that turned out to be a base64 PNG in an SVG wrapper.
-It is 2.3 MB now, for the same pictures.
+This exists because `output: "export"` forces `images: { unoptimized: true }` —
+**Next never resizes or re-encodes anything**, so whatever lands in that folder
+is what every reader downloads, at full size, forever. This folder was once
+11 MB, including a 2.3 MB cover and a 2.2 MB "SVG" that was a base64 PNG in an
+SVG wrapper. It is under 2 MB now, for the same pictures.
 
-### The rule
+### What the optimiser does
 
-| Image | Target | Format |
-| --- | --- | --- |
-| Post cover | ≤ 1600 px wide | **JPEG** |
-| In-article | ≤ 1200 px wide | **JPEG** |
-| Anything needing transparency | ≤ 900 px | **PNG** |
+1. **Passes through** real SVGs (rasterising a vector throws away the point) and
+   animated GIF/WebP (they would be flattened to one frame).
+2. **Applies EXIF rotation** before stripping metadata — otherwise phone photos
+   land sideways.
+3. **Resizes** to fit 1600 px, never enlarging.
+4. **Encodes both JPEG and lossless PNG, and keeps the smaller one.**
+5. **Never returns a bigger file** than it was given — an already-optimised
+   upload is left untouched.
 
-macOS has everything needed built in:
+Step 4 is the part that protects quality without anyone having to choose. JPEG
+wins overwhelmingly on photographs; PNG wins on flat-colour screenshots and
+diagrams, exactly where JPEG would smear the text. A photo is not forced into
+PNG and a screenshot is not forced into JPEG.
 
-```bash
-sips -Z 1600 -s format jpeg -s formatOptions 82 big.png --out cover.jpg
-```
+Typical results, measured on this repo's own originals:
 
-(`sips` can *read* WebP but not write it, so WebP needs `cwebp` or ImageMagick.)
+| | Before | After |
+| --- | ---: | ---: |
+| Post cover (1536×1024 PNG) | 2332 K | **199 K** (−91%) |
+| Post cover (1672×940 PNG) | 2048 K | **217 K** (−89%) |
+| In-article screenshot | 844 K | **227 K** (−73%) |
+| RSS icon | 605 K | **66 K** (−89%) |
 
-### Why covers are JPEG and not WebP
+### Why not WebP
 
-A cover is also the post's `og:image`. Facebook's and LinkedIn's crawlers have
-long been unreliable with WebP, and a broken preview would defeat the share row
-in §15. JPEG is universally understood and still gets ~85–90% off. The extra
-~5% WebP would buy is not worth gambling the link previews.
+WebP would be roughly another 25% smaller. It is not used because a post cover
+is also its `og:image`, and **Facebook's own sharing documentation never states
+which image formats its crawler accepts** — it specifies dimensions, file size
+and content encoding, and is silent on format. Betting the link previews from
+§15 on undocumented behaviour to save 25% is a bad trade. JPEG is understood
+everywhere.
 
-### Two traps worth knowing
+If you ever decide the risk is acceptable, it is one line: swap the `.jpeg(…)`
+call in `images.dev.ts` for `.webp(…)`.
+
+### The limit worth knowing
+
+**Images with transparency stay lossless, so they barely shrink.** The alpha
+branch only tries PNG, because the alternatives — palette quantisation, or WebP
+— either visibly degrade a photographic cutout or reintroduce the format
+question above. A transparent photo will stay large. If one matters, size it
+deliberately before uploading; the portrait on the About page is 900 px wide for
+exactly that reason.
+
+### Two traps
 
 **SVG is not a valid `og:image`.** The About page pointed `openGraph.images` at
 `purna.svg`; most crawlers render no card at all for SVG, so that preview was
@@ -1163,6 +1187,6 @@ silently broken. It is a PNG now — which also keeps the cutout transparency th
 portrait needs.
 
 **Remote covers are blocked by the CSP.** `public/_headers` sets
-`img-src 'self' data:`. A post with `cover:` pointing at another domain — there
+`img-src 'self' data:`. A post whose `cover:` points at another domain — there
 is one in the drafts, using a GitHub avatar — will silently fail to render the
 moment it is published. Download the image into `public/images/` instead.

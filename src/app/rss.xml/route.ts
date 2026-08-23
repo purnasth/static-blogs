@@ -17,7 +17,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 };
 
 /** The feed's own icon. PNG because RSS readers largely ignore SVG here. */
-const FEED_IMAGE = "/images/purna-shrestha.png";
+const FEED_IMAGE = "/images/purna-shrestha.jpg";
 
 function escapeXml(value: string): string {
   return value
