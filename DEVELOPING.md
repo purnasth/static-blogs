@@ -1118,3 +1118,51 @@ knowing about:
 **A post with no `cover` gets the small card.** If you want every share to look
 the same, add a site-wide fallback image under `openGraph.images` in
 `layout.tsx`.
+
+---
+
+## 16. Images
+
+**Keep them small before they reach `public/images/`.** `output: "export"` forces
+`images: { unoptimized: true }` in next.config.ts, which means **Next will never
+optimise anything for you** — whatever you drop in is what every reader
+downloads, at full size, forever.
+
+That is not hypothetical: this folder was once 11 MB, including a 2.3 MB post
+cover and a 2.2 MB "SVG" that turned out to be a base64 PNG in an SVG wrapper.
+It is 2.3 MB now, for the same pictures.
+
+### The rule
+
+| Image | Target | Format |
+| --- | --- | --- |
+| Post cover | ≤ 1600 px wide | **JPEG** |
+| In-article | ≤ 1200 px wide | **JPEG** |
+| Anything needing transparency | ≤ 900 px | **PNG** |
+
+macOS has everything needed built in:
+
+```bash
+sips -Z 1600 -s format jpeg -s formatOptions 82 big.png --out cover.jpg
+```
+
+(`sips` can *read* WebP but not write it, so WebP needs `cwebp` or ImageMagick.)
+
+### Why covers are JPEG and not WebP
+
+A cover is also the post's `og:image`. Facebook's and LinkedIn's crawlers have
+long been unreliable with WebP, and a broken preview would defeat the share row
+in §15. JPEG is universally understood and still gets ~85–90% off. The extra
+~5% WebP would buy is not worth gambling the link previews.
+
+### Two traps worth knowing
+
+**SVG is not a valid `og:image`.** The About page pointed `openGraph.images` at
+`purna.svg`; most crawlers render no card at all for SVG, so that preview was
+silently broken. It is a PNG now — which also keeps the cutout transparency the
+portrait needs.
+
+**Remote covers are blocked by the CSP.** `public/_headers` sets
+`img-src 'self' data:`. A post with `cover:` pointing at another domain — there
+is one in the drafts, using a GitHub avatar — will silently fail to render the
+moment it is published. Download the image into `public/images/` instead.

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackLink from "@/components/BackLink";
+import CodeCopyButtons from "@/components/CodeCopyButtons";
 import EngagementProvider from "@/components/engagement/EngagementProvider";
 import ReactionBar, { StickyReactionBar } from "@/components/engagement/ReactionBar";
 import ReactionSummary from "@/components/engagement/ReactionSummary";
 import ViewCount from "@/components/engagement/ViewCount";
+import FollowLine from "@/components/FollowLine";
 import ReadingProgress from "@/components/ReadingProgress";
 import ShareLinks from "@/components/ShareLinks";
 import TableOfContents from "@/components/TableOfContents";
@@ -12,6 +14,7 @@ import TagChip from "@/components/TagChip";
 import { Badge, LinkList, LinkRow, MetaRow } from "@/components/ui";
 import { getEngagementSnapshot } from "@/lib/engagement-snapshot";
 import { formatDate } from "@/lib/format";
+import { profile } from "@/lib/profile";
 import { absoluteUrl, site } from "@/lib/site";
 import { renderMarkdown } from "@/lib/markdown";
 import {
@@ -61,8 +64,34 @@ export default async function PostPage({ params }: PageProps<"/posts/[slug]">) {
   const related = getRelatedPosts(slug, post.tags);
   const engagement = await getEngagementSnapshot(slug);
 
+  /**
+   * Structured data. The `og:` tags decide how a share *looks*; this is what
+   * lets Google show the author, date and image as a rich result. Covers may be
+   * absolute already (a remote URL), so only site-relative paths get resolved.
+   */
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: post.summary,
+    datePublished: post.date,
+    dateModified: post.date,
+    image: post.cover
+      ? [post.cover.startsWith("/") ? absoluteUrl(post.cover) : post.cover]
+      : undefined,
+    keywords: post.tags.length > 0 ? post.tags.join(", ") : undefined,
+    mainEntityOfPage: absoluteUrl(`/posts/${slug}/`),
+    author: { "@type": "Person", name: site.author, url: profile.portfolio },
+    publisher: { "@type": "Person", name: site.author, url: site.url },
+  };
+
   return (
     <EngagementProvider slug={slug} initial={engagement}>
+      {/* CSP already allows inline scripts, so no nonce plumbing is needed. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
       <div className="relative">
         <ReadingProgress />
 
@@ -115,10 +144,12 @@ export default async function PostPage({ params }: PageProps<"/posts/[slug]">) {
           )}
 
           <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: html }} />
+          <CodeCopyButtons />
         </article>
 
         <ReactionBar />
         <ShareLinks url={absoluteUrl(`/posts/${slug}/`)} title={post.title} />
+        <FollowLine />
         <StickyReactionBar />
 
         {(newer || older) && (
