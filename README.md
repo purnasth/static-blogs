@@ -19,6 +19,10 @@ how the counts stay honest without either.
 <details>
   <summary>Other Pages</summary>
 
+### About Page
+
+<img width="3418" height="2142" alt="About Page" src="https://github.com/user-attachments/assets/0f1aa435-4848-485e-93b1-3b3573693903" />
+
 ### Blogs
 
 <img

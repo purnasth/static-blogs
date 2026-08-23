@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-/** `inherit` lets a heading own the size; the rest map to the type scale. */
 export type TagSize = "inherit" | "sm" | "md" | "lg";
 
 const TEXT: Record<TagSize, string> = {
@@ -10,7 +9,6 @@ const TEXT: Record<TagSize, string> = {
   lg: "text-title",
 };
 
-/** Hashtags need more air than pills did — nothing encloses them at rest. */
 const GAP: Record<TagSize, string> = {
   inherit: "gap-x-4 gap-y-2",
   sm: "gap-x-3 gap-y-1.5",
@@ -35,8 +33,6 @@ type LabelProps = {
 export function TagLabel({ tag, count, size = "sm", className = "", children }: LabelProps) {
   return (
     <span className={`tag-mark ${TEXT[size]} ${className}`}>
-      {/* One element, so the gleam gradient spans the whole `#name` and no
-          further — the count keeps its own solid fill. */}
       <span className="tag-gleam">
         <span aria-hidden className="tag-hash">
           #
@@ -74,7 +70,6 @@ type ListProps = {
   className?: string;
 };
 
-/** Wraps a set of tags with spacing matched to their size. */
 export function TagList({ tags, size = "sm", className = "" }: ListProps) {
   if (tags.length === 0) return null;
 

@@ -99,25 +99,18 @@
   --art-o-b: light-dark(0.4, 0.34);
   --art-o-line: light-dark(0.1, 0.09);
 
-  /* Fast out of the gate, long gentle settle — reads as responsive. */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  /* Overshoots past the target and comes back. For things that should pop. */
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* Near-constant speed with soft ends — for something travelling across. */
   --ease-glide: cubic-bezier(0.45, 0, 0.25, 1);
 
-  /* The travelling highlight. Light mode leans on the gold's hue shift away
-     from the terracotta; dark mode has the room to go genuinely bright. */
   --gleam: light-dark(
     color-mix(in oklab, var(--brand-alt), white 10%),
     color-mix(in oklab, var(--brand-alt-on-dark), white 45%)
   );
-  /* The specular core at the centre of the band — what sells it as light. */
   --gleam-hot: light-dark(
     color-mix(in oklab, var(--brand-alt), white 34%),
     color-mix(in oklab, var(--brand-alt-on-dark), white 82%)
   );
-  /* The line the light leaves behind it. */
   --gleam-lit: color-mix(in oklab, var(--accent), var(--gleam) 45%);
 }
 
@@ -360,15 +353,7 @@ dialog::backdrop {
   }
 }
 
-/* ── Tags ───────────────────────────────────────────────────────────────────
-   `tag-mark` is the static hashtag — used by headings and the editor, where a
-   tag is a label rather than a destination. Wrapping one in `tag-link` lights
-   it: a band of the brand's gold is swept through the glyphs themselves, using
-   the text as its own mask. Nothing is drawn behind the word, so the mark never
-   stops being a mark.
-
-   The motion lives here rather than in the component so it is written once,
-   stays legible as real CSS, and any surface that needs a tag can borrow it. */
+/* ── Tags ────────────────────────────────────────────────────────────────── */
 
 .tag-mark {
   display: inline-flex;
@@ -378,15 +363,8 @@ dialog::backdrop {
   font-family: var(--font-italic-stack), ui-serif, Georgia, serif;
 }
 
-/** The `#name` itself. The gradient is far wider than the text and parked with
-    its bright band off the left edge; hover slides that band across. */
 .tag-gleam {
   position: relative;
-  /* At rest the window sits over the right end of this image, and once the
-     sweep finishes it sits over the left end — so the band and both its ramps
-     have to fit inside 41%–59%, or the highlight would graze the resting
-     state. Both ends are the plain accent: the light passes through the word
-     without leaving the ink any different than it found it. */
   background-image: linear-gradient(
     100deg,
     var(--accent) 0 41%,
@@ -405,9 +383,6 @@ dialog::backdrop {
   transition: background-position 650ms var(--ease-glide);
 }
 
-/** The light leaves a line behind it. Same duration and curve as the sweep,
-    started a beat later, so it reads as being drawn by the band rather than
-    arriving on its own. Thickness in `em`, so it holds up at any size. */
 .tag-gleam::after {
   content: "";
   position: absolute;
@@ -421,15 +396,11 @@ dialog::backdrop {
   transition: transform 650ms var(--ease-glide);
 }
 
-/** Quieter than the word it marks. An explicit fill rather than `opacity`,
-    which cannot dim a background painted by the ancestor. */
 .tag-hash {
   -webkit-text-fill-color: color-mix(in oklab, var(--accent) 48%, transparent);
   transition: -webkit-text-fill-color 260ms ease;
 }
 
-/** Sized in `em` throughout, so one rule holds from a 13px meta row up to a
-    display heading with no per-size overrides. */
 .tag-count {
   display: inline-flex;
   align-items: center;
@@ -453,8 +424,6 @@ dialog::backdrop {
 .tag-link {
   display: inline-flex;
   border-radius: 999px;
-  /* A comfortable hit area, pulled back out again so the tag still sits flush
-     with whatever it lines up against. */
   padding: 0.16em 0.4em;
   margin-inline: -0.4em;
   transition:
@@ -463,8 +432,6 @@ dialog::backdrop {
 }
 
 .tag-link:is(:hover, :focus-visible) {
-  /* The glyphs bloom as the band passes — the light looks like it is coming
-     off the letters rather than sitting on them. */
   filter: drop-shadow(0 0 10px color-mix(in oklab, var(--gleam-hot) 60%, transparent));
   transform: translateY(-1px);
 }
@@ -478,7 +445,6 @@ dialog::backdrop {
   transition-delay: 90ms;
 }
 
-/* Hands the glyph back to the gradient, so the band runs through the "#" too. */
 .tag-link:is(:hover, :focus-visible) .tag-hash {
   -webkit-text-fill-color: transparent;
 }
