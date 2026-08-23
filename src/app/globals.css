@@ -98,6 +98,27 @@
   --art-o-a: light-dark(0.52, 0.46);
   --art-o-b: light-dark(0.4, 0.34);
   --art-o-line: light-dark(0.1, 0.09);
+
+  /* Fast out of the gate, long gentle settle — reads as responsive. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Overshoots past the target and comes back. For things that should pop. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Near-constant speed with soft ends — for something travelling across. */
+  --ease-glide: cubic-bezier(0.45, 0, 0.25, 1);
+
+  /* The travelling highlight. Light mode leans on the gold's hue shift away
+     from the terracotta; dark mode has the room to go genuinely bright. */
+  --gleam: light-dark(
+    color-mix(in oklab, var(--brand-alt), white 10%),
+    color-mix(in oklab, var(--brand-alt-on-dark), white 45%)
+  );
+  /* The specular core at the centre of the band — what sells it as light. */
+  --gleam-hot: light-dark(
+    color-mix(in oklab, var(--brand-alt), white 34%),
+    color-mix(in oklab, var(--brand-alt-on-dark), white 82%)
+  );
+  /* The line the light leaves behind it. */
+  --gleam-lit: color-mix(in oklab, var(--accent), var(--gleam) 45%);
 }
 
 :root[data-theme="light"] {
@@ -334,7 +355,143 @@ dialog::backdrop {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* ── Tags ───────────────────────────────────────────────────────────────────
+   `tag-mark` is the static hashtag — used by headings and the editor, where a
+   tag is a label rather than a destination. Wrapping one in `tag-link` lights
+   it: a band of the brand's gold is swept through the glyphs themselves, using
+   the text as its own mask. Nothing is drawn behind the word, so the mark never
+   stops being a mark.
+
+   The motion lives here rather than in the component so it is written once,
+   stays legible as real CSS, and any surface that needs a tag can borrow it. */
+
+.tag-mark {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  color: var(--accent);
+  font-family: var(--font-italic-stack), ui-serif, Georgia, serif;
+}
+
+/** The `#name` itself. The gradient is far wider than the text and parked with
+    its bright band off the left edge; hover slides that band across. */
+.tag-gleam {
+  position: relative;
+  /* At rest the window sits over the right end of this image, and once the
+     sweep finishes it sits over the left end — so the band and both its ramps
+     have to fit inside 41%–59%, or the highlight would graze the resting
+     state. Both ends are the plain accent: the light passes through the word
+     without leaving the ink any different than it found it. */
+  background-image: linear-gradient(
+    100deg,
+    var(--accent) 0 41%,
+    var(--gleam) 47%,
+    var(--gleam-hot) 50%,
+    var(--gleam) 53%,
+    var(--accent) 59% 100%
+  );
+  background-size: 260% 100%;
+  background-position: 100% 0;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  transition: background-position 650ms var(--ease-glide);
+}
+
+/** The light leaves a line behind it. Same duration and curve as the sweep,
+    started a beat later, so it reads as being drawn by the band rather than
+    arriving on its own. Thickness in `em`, so it holds up at any size. */
+.tag-gleam::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0.06em;
+  height: max(1px, 0.055em);
+  border-radius: 999px;
+  background: var(--gleam-lit);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 650ms var(--ease-glide);
+}
+
+/** Quieter than the word it marks. An explicit fill rather than `opacity`,
+    which cannot dim a background painted by the ancestor. */
+.tag-hash {
+  -webkit-text-fill-color: color-mix(in oklab, var(--accent) 48%, transparent);
+  transition: -webkit-text-fill-color 260ms ease;
+}
+
+/** Sized in `em` throughout, so one rule holds from a 13px meta row up to a
+    display heading with no per-size overrides. */
+.tag-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.4em;
+  height: 1.5em;
+  min-width: 1.5em;
+  padding-inline: 0.35em;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  -webkit-text-fill-color: var(--accent-contrast);
+  font-family: var(--font-sans-stack), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.68em;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: transform 420ms var(--ease-spring);
+}
+
+.tag-link {
+  display: inline-flex;
+  border-radius: 999px;
+  /* A comfortable hit area, pulled back out again so the tag still sits flush
+     with whatever it lines up against. */
+  padding: 0.16em 0.4em;
+  margin-inline: -0.4em;
+  transition:
+    filter 320ms ease,
+    transform 420ms var(--ease-out-expo);
+}
+
+.tag-link:is(:hover, :focus-visible) {
+  /* The glyphs bloom as the band passes — the light looks like it is coming
+     off the letters rather than sitting on them. */
+  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--gleam-hot) 60%, transparent));
+  transform: translateY(-1px);
+}
+
+.tag-link:is(:hover, :focus-visible) .tag-gleam {
+  background-position: 0 0;
+}
+
+.tag-link:is(:hover, :focus-visible) .tag-gleam::after {
+  transform: scaleX(1);
+  transition-delay: 90ms;
+}
+
+/* Hands the glyph back to the gradient, so the band runs through the "#" too. */
+.tag-link:is(:hover, :focus-visible) .tag-hash {
+  -webkit-text-fill-color: transparent;
+}
+
+.tag-link:is(:hover, :focus-visible) .tag-count {
+  transform: scale(1.06);
+}
+
+/** Without text clipping the word would render transparent. */
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  .tag-gleam {
+    color: var(--accent);
+    -webkit-text-fill-color: var(--accent);
   }
 }
 

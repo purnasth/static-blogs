@@ -10,7 +10,7 @@ import FollowLine from "@/components/FollowLine";
 import ReadingProgress from "@/components/ReadingProgress";
 import ShareLinks from "@/components/ShareLinks";
 import TableOfContents from "@/components/TableOfContents";
-import TagChip from "@/components/TagChip";
+import { TagList } from "@/components/Tag";
 import { Badge, LinkList, LinkRow, MetaRow } from "@/components/ui";
 import { getEngagementSnapshot } from "@/lib/engagement-snapshot";
 import { formatDate } from "@/lib/format";
@@ -128,13 +128,7 @@ export default async function PostPage({ params }: PageProps<"/posts/[slug]">) {
                 <ViewCount />
                 <ReactionSummary />
               </div>
-              {post.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {post.tags.map((tag) => (
-                    <TagChip key={tag} tag={tag} />
-                  ))}
-                </div>
-              )}
+              <TagList tags={post.tags} />
             </div>
           </header>
 

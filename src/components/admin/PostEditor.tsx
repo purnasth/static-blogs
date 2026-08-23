@@ -316,7 +316,7 @@ export default function PostEditor({ post, today }: { post: Post | null; today: 
                 {!metaOpen && (
                   <span className="ml-1 truncate font-mono text-subtle">
                     /posts/{effectiveSlug}/ · {draft.date}
-                    {draft.tags.length > 0 && ` · ${draft.tags.join(", ")}`}
+                    {draft.tags.length > 0 && ` · ${draft.tags.map((t) => `#${t}`).join(" ")}`}
                   </span>
                 )}
               </button>

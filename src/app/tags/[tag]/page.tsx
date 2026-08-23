@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import BackLink from "@/components/BackLink";
 import PostRow from "@/components/PostRow";
+import { TagLabel } from "@/components/Tag";
 import { getAllTags, getPostSummaries } from "@/lib/posts";
 
 export function generateStaticParams() {
@@ -22,8 +23,9 @@ export default async function TagPage({ params }: PageProps<"/tags/[tag]">) {
     <div>
       <header className="border-b border-line pb-8">
         <BackLink href="/tags/">All tags</BackLink>
-        <h1 className="mt-5 text-display font-semibold">
-          <span className="text-muted">Tagged</span> {decoded}
+        <h1 className="mt-5 flex flex-wrap items-center gap-x-3 text-display font-semibold">
+          <span className="text-display font-semibold">Tagged</span>
+          <TagLabel tag={decoded} size="inherit" />
         </h1>
         <p className="mt-3 text-lede text-muted">
           {posts.length} {posts.length === 1 ? "post" : "posts"}

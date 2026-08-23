@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TagLabel } from "@/components/Tag";
 import { Field, Input } from "@/components/ui";
 import { SUMMARY_MAX_LENGTH } from "@/lib/constants";
 import { slugify } from "@/lib/slug";
@@ -96,23 +97,19 @@ export default function MetaPanel({ meta, effectiveSlug, onChange, onSlugEdited 
         <Field label="Tags" hint="Enter or comma to add · Backspace to remove">
           <div
             onClick={(e) => e.currentTarget.querySelector("input")?.focus()}
-            className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-lg border border-line bg-background px-2 py-1.5 transition-colors focus-within:border-accent hover:border-line-strong"
+            className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-line bg-background px-2.5 py-1.5 transition-colors focus-within:border-accent hover:border-line-strong"
           >
             {meta.tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 rounded-full bg-accent-soft py-0.5 pl-2.5 pr-1 text-meta text-accent"
-              >
-                {tag}
+              <TagLabel key={tag} tag={tag}>
                 <button
                   type="button"
                   aria-label={`Remove tag ${tag}`}
                   onClick={() => onChange({ tags: meta.tags.filter((t) => t !== tag) })}
-                  className="grid size-4 place-items-center rounded-full text-micro transition-colors hover:bg-accent hover:text-accent-contrast"
+                  className="ml-0.5 grid size-4 place-items-center rounded-full text-micro opacity-50 transition hover:bg-accent hover:text-accent-contrast hover:opacity-100"
                 >
                   ×
                 </button>
-              </span>
+              </TagLabel>
             ))}
             <input
               value={tagDraft}

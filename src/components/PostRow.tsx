@@ -1,6 +1,6 @@
 import Link from "next/link";
 import PostStats from "@/components/engagement/PostStats";
-import TagChip from "@/components/TagChip";
+import { TagList } from "@/components/Tag";
 import { Badge, MetaRow } from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import type { PostSummary } from "@/lib/types";
@@ -40,13 +40,8 @@ export default function PostRow({ post }: { post: PostSummary }) {
 
       {post.summary && <p className="mt-2 text-muted">{post.summary}</p>}
 
-      {post.tags.length > 0 && (
-        <div className="relative z-10 mt-3 flex flex-wrap gap-1.5">
-          {post.tags.map((tag) => (
-            <TagChip key={tag} tag={tag} />
-          ))}
-        </div>
-      )}
+      {/* relative z-10 so the links stay above the title's full-row overlay. */}
+      <TagList tags={post.tags} className="relative z-10 mt-3" />
     </article>
   );
 }
