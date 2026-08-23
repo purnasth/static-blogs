@@ -1190,3 +1190,74 @@ portrait needs.
 `img-src 'self' data:`. A post whose `cover:` points at another domain — there
 is one in the drafts, using a GitHub avatar — will silently fail to render the
 moment it is published. Download the image into `public/images/` instead.
+
+---
+
+## 17. Icons and the manifest
+
+All of it is generated from one photo, `public/images/purna-shrestha.jpg`.
+
+| File | Size | Purpose |
+| --- | --- | --- |
+| File | Size | Shape | Purpose |
+| --- | --- | --- | --- |
+| `src/app/favicon.ico` | 16, 32, 48 | circle | browser tab, and the `/favicon.ico` browsers request regardless |
+| `src/app/icon.png` | 32 | circle | modern `<link rel="icon">` |
+| `src/app/icon1.png` | 192 | circle | higher-resolution tab/bookmark |
+| `src/app/apple-icon.png` | 180 | **square** | iOS home screen |
+| `public/icons/icon-192.png` | 192 | circle | manifest |
+| `public/icons/icon-512.png` | 512 | circle | manifest, splash |
+| `public/icons/icon-maskable-512.png` | 512 | **square** | manifest, Android adaptive |
+
+Files under `src/app/` use Next's own conventions, so the `<link>` tags are
+emitted automatically and the assets get build hashes. The manifest icons live
+in `public/icons/` instead, because a manifest needs stable URLs — which is also
+why `public/_headers` carries an explicit `immutable` rule for that folder.
+
+### Three decisions worth keeping
+
+**Nothing is cropped.** The source is already 1:1, so every icon is a plain
+downscale of the whole frame and the composition stays exactly as shot. An
+earlier attempt cropped in on the head to make the 16px tile "read better" and
+just cut the picture down to a neck — don't reintroduce that.
+
+**Round is a mask, not a crop.** The circle is applied with a `dest-in`
+composite, which turns the corners transparent and leaves every pixel of the
+photo in place.
+
+**Two icons stay square, deliberately.** Both are masked by the platform, so
+pre-cutting a circle would mask them twice:
+
+- `apple-icon.png` — iOS ignores transparency on an apple-touch-icon, flattens
+  it onto black, then applies its own rounded rectangle. A circular source lands
+  as a circle sitting in black corners.
+- `icon-maskable-512.png` — Android crops to a device-chosen shape (circle,
+  squircle, teardrop) and picks it per launcher.
+
+**`maskable` pads, it does not crop.** Android crops the tile to a
+device-chosen shape and only guarantees the central 80%, so that variant places
+the whole photo at 80% on a backdrop matching its own grey. The launcher's crop
+then eats the padding instead of the picture. Listing one image as both `any`
+and `maskable` gets it either cropped into the face or floating with double
+padding, depending on the launcher — hence the separate file.
+
+**The ICO payloads must be RGBA.** The source is a JPEG, so sharp emits RGB
+PNGs by default and Turbopack's ICO decoder rejects them outright — the build
+fails with *"The PNG is not in RGBA format"*. `.ensureAlpha()` before `.png()`
+is what fixes it.
+
+`theme-color` is declared in `layout.tsx` as a `viewport` export with separate
+light and dark entries, so the mobile browser chrome follows the site's theme
+instead of fighting it.
+
+### Regenerating
+
+There is no committed script — it is a handful of `sharp` calls, run once. If
+the photo changes: keep it square, `resize()` to each size without extracting,
+apply the circle with `composite([{ input: svgCircle, blend: "dest-in" }])`
+after `.ensureAlpha()`, leave `apple-icon` and the maskable one square, and
+remember `.ensureAlpha()` for the three that go inside the `.ico`.
+
+Worth checking after any change: the corner pixel's alpha should be `0` and the
+centre's `255`. A circle mask that silently did nothing looks identical in a
+file listing.
