@@ -1261,3 +1261,27 @@ remember `.ensureAlpha()` for the three that go inside the `.ico`.
 Worth checking after any change: the corner pixel's alpha should be `0` and the
 centre's `255`. A circle mask that silently did nothing looks identical in a
 file listing.
+
+---
+
+## 18. Claude Code skills
+
+`.claude/skills/` holds six commands that teach Claude Code the things about
+this repo it would otherwise get wrong — the `.dev.tsx` rule, the semantic
+colour vocabulary, the quoted dates, why `wrangler.jsonc` is load-bearing.
+They're committed, so they arrive with a clone.
+
+| Command | For |
+| --- | --- |
+| `/ship-check` | Pre-publish gate. There's no CI; this is it. |
+| `/ui` | Load before writing a component — tone tokens and the `ui/` primitives. |
+| `/draft` | Start a post, or line-edit one. |
+| `/grill-me` | Interrogates a draft or a decision to find the holes. |
+| `/deploy` | Deploy path and failure triage. |
+| `/d1` | Engagement data, schema and privacy constraints. |
+
+You rarely type these — each skill's `description` field lists the phrases that
+load it, so "is this ready to publish?" pulls in `/ship-check` on its own.
+
+Full usage, and how to write your own, in
+[`.claude/skills/README.md`](.claude/skills/README.md).
