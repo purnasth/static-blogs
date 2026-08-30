@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import PublishPanel from "@/components/admin/PublishPanel";
+import { TagLabel } from "@/components/Tag";
 import {
   ButtonLink,
   Input,
@@ -138,7 +139,9 @@ export default function PostList({ posts, status }: { posts: Post[]; status: Pub
                       </span>,
                       post.tags.length > 0 && (
                         <span key="tags" className="truncate">
-                          {post.tags.join(", ")}
+                          {post.tags.map((tag) => (
+                            <TagLabel key={tag} tag={tag} className="mr-2 last:mr-0" />
+                          ))}
                         </span>
                       ),
                     ]}

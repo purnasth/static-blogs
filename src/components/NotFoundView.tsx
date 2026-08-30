@@ -31,7 +31,7 @@ export default function NotFoundView({
           </span>
 
           <div className="-mt-[0.35em] sm:-mt-[0.45em] text-center">
-            <h1 className="text-balance text-display font-semibold">{title}</h1>
+            <h1 className="text-balance text-display font-semibold font-italic">{title}</h1>
             <p className="mt-4 max-w-md mx-auto text-base text-muted">
               {description}
             </p>

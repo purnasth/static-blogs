@@ -11,7 +11,7 @@ export default function LinkRow({ href, label, aside }: Props) {
   return (
     <Link href={href} className="group flex items-baseline justify-between gap-4 py-3">
       <span className="font-medium transition-colors group-hover:text-accent">{label}</span>
-      {aside && <span className="meta shrink-0">{aside}</span>}
+      {aside && <span className="meta shrink-0 font-italic">{aside}</span>}
     </Link>
   );
 }

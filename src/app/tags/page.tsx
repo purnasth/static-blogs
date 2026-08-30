@@ -1,4 +1,4 @@
-import TagChip from "@/components/TagChip";
+import { TagList } from "@/components/Tag";
 import { getAllTags } from "@/lib/posts";
 
 export const metadata = { title: "Tags" };
@@ -17,13 +17,7 @@ export default function TagsPage() {
         </p>
       </header>
 
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 pt-8">
-          {tags.map(({ tag, count }) => (
-            <TagChip key={tag} tag={tag} count={count} size="md" />
-          ))}
-        </div>
-      )}
+      <TagList tags={tags} size="inherit" className="pt-8" />
     </div>
   );
 }

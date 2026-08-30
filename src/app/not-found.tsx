@@ -1,4 +1,5 @@
 import NotFoundView from "@/components/NotFoundView";
+import { TagList } from "@/components/Tag";
 import { ButtonLink, LinkList, LinkRow } from "@/components/ui";
 import { RECENT_POSTS_ON_NOT_FOUND } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
@@ -31,7 +32,9 @@ export default function NotFound() {
                 <LinkRow
                   href={`/posts/${post.slug}/`}
                   label={post.title}
-                  aside={<time dateTime={post.date}>{formatDate(post.date)}</time>}
+                  aside={
+                    <time dateTime={post.date}>{formatDate(post.date)}</time>
+                  }
                 />
               </li>
             ))}
@@ -42,18 +45,7 @@ export default function NotFound() {
       {tags.length > 0 && (
         <section className="mt-10">
           <h2 className="eyebrow mb-3">Or pick a topic</h2>
-          <div className="flex flex-wrap gap-1.5">
-            {tags.map(({ tag, count }) => (
-              <a
-                key={tag}
-                href={`/tags/${encodeURIComponent(tag)}/`}
-                className="inline-flex items-center gap-1.5 rounded-full border border-line bg-raised px-2.5 py-0.5 text-meta text-muted transition-colors hover:border-accent hover:text-accent"
-              >
-                {tag}
-                <span className="tabular-nums text-subtle">{count}</span>
-              </a>
-            ))}
-          </div>
+          <TagList tags={tags} />
         </section>
       )}
     </NotFoundView>
